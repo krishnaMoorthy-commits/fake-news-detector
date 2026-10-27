@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+
+{% block title %}Detect News — Fake News Detection{% endblock %}
+{% block meta_description %}Submit a news headline or article for machine-learning analysis and review the model prediction.{% endblock %}
+
+{% block content %}
+<section class="page-hero">
+  <div class="container">
+    <ol class="breadcrumb">
+      <li><a href="{{ url_for('index') }}">Home</a></li>
+      <li aria-hidden="true"><svg class="icon"><use href="#i-arrow-right"></use></svg></li>
+      <li aria-current="page">Detect News</li>
+    </ol>
+    <p class="eyebrow">Detection</p>
+    <h1>Analyze a news article</h1>
+    <p class="muted">
+      Paste a headline, an article body, or both. The text is cleaned, converted into TF-IDF
+      features and passed to the trained classifier that ships with this project.
+    </p>
+  </div>
+</section>
+
+<section class="section">
+  <div class="container">
+    <div class="analyze-layout">
+
+      <div class="panel reveal">
+        <h2 class="panel-title" id="formTitle">Check a news article</h2>
+        <p class="panel-sub">
+          At least one field is required. Submissions are validated on the server before the
+          model runs.
+        </p>
+        {% include "partials/analyze_form.html" %}
+      </div>
+
+      <aside class="reveal" data-delay="1" aria-labelledby="asideTitle">
+        <div class="panel-flat">
+          <h2 class="panel-title" id="asideTitle" style="font-size:var(--fs-2);">What happens to your text</h2>
+          <ul class="aside-list">
+            <li>
+              <svg class="icon" aria-hidden="true"><use href="#i-text"></use></svg>
+              <span><strong>Cleaning</strong> — lowercased; HTML tags, URLs and punctuation
+                removed; whitespace collapsed.</span>
+            </li>
+            <li>
+              <svg class="icon" aria-hidden="true"><use href="#i-branch"></use></svg>
+              <span><strong>Vectorization</strong> — the TF-IDF vectorizer fitted at training
+                time converts the cleaned text into numeric features.</span>
+            </li>
+            <li>
+              <svg class="icon" aria-hidden="true"><use href="#i-cpu"></use></svg>
+              <span><strong>Classification</strong> — Logistic Regression returns a label and,
+                where available, the probability of that class.</span>
+            </li>
+            <li>
+              <svg class="icon" aria-hidden="true"><use href="#i-shield"></use></svg>
+              <span><strong>Handling</strong> — the text is processed by this Flask server. It
+                is not sent to an external fact-checking service.</span>
+            </li>
+          </ul>
+        </div>
+
+        <div class="panel-flat" style="margin-top:1.25rem;">
+          <h2 class="panel-title" style="font-size:var(--fs-2);">This session</h2>
+          <dl class="meta-list">
+            <div class="meta-row"><dt>Checked</dt><dd>{{ stats.total }}</dd></div>
+            <div class="meta-row"><dt>Labelled REAL</dt><dd>{{ stats.real }}</dd></div>
+            <div class="meta-row"><dt>Labelled FAKE</dt><dd>{{ stats.fake }}</dd></div>
+          </dl>
+        </div>
+
+        <div class="alert alert-warning" style="margin-top:1.25rem;" role="note">
+          <svg class="icon" aria-hidden="true"><use href="#i-alert"></use></svg>
+          <div>
+            A prediction is a statistical label, not proof that a story is true or false.
+            It cannot verify claims against independent sources.
+          </div>
+        </div>
+      </aside>
+
+    </div>
+  </div>
+</section>
+
+{# Static explanatory section so the page still communicates when JS is off #}
+<section class="section-tight section-alt">
+  <div class="container">
+    <div class="section-head reveal" style="margin-bottom:clamp(1.5rem,3vw,2.25rem);">
+      <p class="eyebrow">Reading the output</p>
+      <h2 class="section-title" style="font-size:var(--fs-3);">How to interpret the result page</h2>
+    </div>
+
+    <div class="steps">
+      <article class="step reveal">
+        <span class="step-icon" aria-hidden="true"><svg class="icon"><use href="#i-check-circle"></use></svg></span>
+        <h3>Label</h3>
+        <p>The classifier assigns exactly one class, <strong>REAL</strong> or <strong>FAKE</strong>.
+           The label is accompanied by an icon and a written word so it never depends on colour
+           alone.</p>
+      </article>
+      <article class="step reveal" data-delay="1">
+        <span class="step-icon" aria-hidden="true"><svg class="icon"><use href="#i-pulse"></use></svg></span>
+        <h3>Confidence</h3>
+        <p>If the model exposes class probabilities, the predicted class probability is shown
+           as a percentage. When it cannot be computed the value is simply omitted.</p>
+      </article>
+      <article class="step reveal" data-delay="2">
+        <span class="step-icon" aria-hidden="true"><svg class="icon"><use href="#i-info"></use></svg></span>
+        <h3>Context</h3>
+        <p>The page echoes your submitted text, explains the outcome in plain language and
+           repeats the limitation: consult reliable reporting before drawing conclusions.</p>
+      </article>
+    </div>
+  </div>
+</section>
+
+{% endblock %}

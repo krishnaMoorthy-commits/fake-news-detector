@@ -1,169 +1,277 @@
 /* ==========================================================================
-   Fake News Detection - Frontend Interactions
-   NOTE: This file contains ONLY UI logic. All Machine Learning prediction
-   happens on the Flask/Python backend (see app.py / model.py).
+   Fake News Detection — UI layer
+   ---------------------------------------------------------------------------
+   This file contains ONLY interface behaviour: navigation, scroll reveals,
+   character counting, sample text and the submit/loading state.
+   No prediction ever happens here. Every classification is performed by the
+   Flask backend in app.py / model.py.
    ========================================================================== */
 
-document.addEventListener("DOMContentLoaded", () => {
-  initClearButton();
-  initCharCounter();
-  initFormSubmitLoading();
-  initPipelineStages();
-  initStatsChart();
-});
+(function () {
+  "use strict";
 
-/* ---------------------------------------------------------------------
-   CLEAR BUTTON
---------------------------------------------------------------------- */
-function initClearButton() {
-  const clearBtn = document.getElementById("clearBtn");
-  if (!clearBtn) return;
+  var MAX_CHARS = 10000;
 
-  clearBtn.addEventListener("click", () => {
-    const headline = document.getElementById("headline");
-    const article = document.getElementById("article");
-    if (headline) headline.value = "";
-    if (article) article.value = "";
-    updateCharCounter();
+  /* ---------------------------------------------------------------------
+     Sample inputs (plain example text used to demo the form, nothing else)
+  --------------------------------------------------------------------- */
+  var SAMPLES = {
+    neutral: {
+      headline: "City council approves budget for riverside park",
+      article:
+        "The city council voted on Tuesday to approve a funding package for a new " +
+        "riverside park. The plan includes walking paths, improved lighting and a " +
+        "small children's play area. Construction is expected to begin next spring, " +
+        "according to the agenda published by the council before the meeting."
+    },
+    sensational: {
+      headline: "You won't BELIEVE what this celebrity just did",
+      article:
+        "This one weird trick is being hidden from the public by powerful corporations. " +
+        "Share this before it gets deleted, because the mainstream media does not want " +
+        "you to know the truth. Click now to reveal the secret they are covering up, " +
+        "and comment AMEN if you agree."
+    }
+  };
+
+  document.addEventListener("DOMContentLoaded", function () {
+    initHeader();
+    initNav();
+    initReveals();
+    initAnalysisForm();
   });
-}
 
-/* ---------------------------------------------------------------------
-   CHARACTER COUNTER + MAX LENGTH VALIDATION
---------------------------------------------------------------------- */
-const MAX_CHARS = 10000;
+  /* ---------------------------------------------------------------------
+     Header: subtle elevation once the page is scrolled
+  --------------------------------------------------------------------- */
+  function initHeader() {
+    var header = document.querySelector(".site-header");
+    if (!header) return;
 
-function updateCharCounter() {
-  const article = document.getElementById("article");
-  const headline = document.getElementById("headline");
-  const counter = document.getElementById("charCounter");
-  const warning = document.getElementById("charWarning");
-  if (!article || !counter) return;
-
-  const total = (headline ? headline.value.length : 0) + article.value.length;
-  counter.textContent = `${total} / ${MAX_CHARS} characters`;
-
-  if (warning) {
-    warning.textContent = total > MAX_CHARS ? "Maximum length exceeded." : "";
+    var update = function () {
+      header.classList.toggle("is-scrolled", window.scrollY > 8);
+    };
+    update();
+    window.addEventListener("scroll", update, { passive: true });
   }
 
-  const checkBtn = document.getElementById("checkBtn");
-  if (checkBtn && total > MAX_CHARS) {
-    checkBtn.setAttribute("disabled", "disabled");
-  } else if (checkBtn && !checkBtn.dataset.modelMissing) {
-    checkBtn.removeAttribute("disabled");
-  }
-}
+  /* ---------------------------------------------------------------------
+     Mobile navigation
+  --------------------------------------------------------------------- */
+  function initNav() {
+    var toggle = document.getElementById("navToggle");
+    var menu = document.getElementById("navMenu");
+    if (!toggle || !menu) return;
 
-function initCharCounter() {
-  const article = document.getElementById("article");
-  const headline = document.getElementById("headline");
-  if (!article) return;
+    var isOpen = function () {
+      return menu.getAttribute("data-open") === "true";
+    };
 
-  article.addEventListener("input", updateCharCounter);
-  if (headline) headline.addEventListener("input", updateCharCounter);
-  updateCharCounter();
-}
+    var setOpen = function (open) {
+      menu.setAttribute("data-open", open ? "true" : "false");
+      toggle.setAttribute("aria-expanded", open ? "true" : "false");
+    };
 
-/* ---------------------------------------------------------------------
-   FORM SUBMISSION: VALIDATION + LOADING STATE
---------------------------------------------------------------------- */
-function initFormSubmitLoading() {
-  const form = document.getElementById("detectForm");
-  const checkBtn = document.getElementById("checkBtn");
-  if (!form || !checkBtn) return;
+    setOpen(false);
 
-  form.addEventListener("submit", (event) => {
-    const headline = document.getElementById("headline").value.trim();
-    const article = document.getElementById("article").value.trim();
-
-    if (!headline && !article) {
-      event.preventDefault();
-      alert("Please enter a news headline or article before checking.");
-      return;
-    }
-
-    const total = headline.length + article.length;
-    if (total > MAX_CHARS) {
-      event.preventDefault();
-      alert(`Please limit your text to ${MAX_CHARS.toLocaleString()} characters.`);
-      return;
-    }
-
-    // Show loading state and disable the button to prevent duplicate submits.
-    const btnText = checkBtn.querySelector(".btn-text");
-    const btnLoading = checkBtn.querySelector(".btn-loading");
-    if (btnText && btnLoading) {
-      btnText.classList.add("d-none");
-      btnLoading.classList.remove("d-none");
-    }
-    checkBtn.setAttribute("disabled", "disabled");
-  });
-}
-
-/* ---------------------------------------------------------------------
-   PIPELINE STAGE EXPLANATIONS
---------------------------------------------------------------------- */
-const STAGE_EXPLANATIONS = {
-  collection:
-    "News articles are collected from an appropriate dataset containing labelled examples.",
-  cleaning:
-    "Text is normalized (lowercased, HTML/URLs/punctuation removed) and unnecessary content is stripped out.",
-  extraction:
-    "TF-IDF converts the cleaned text into numerical features that reflect how distinctive each word is.",
-  ml:
-    "Logistic Regression learns patterns that separate REAL and FAKE examples from labelled training data.",
-  prediction:
-    "The trained model classifies new input as REAL or FAKE, with a confidence score when available.",
-};
-
-function initPipelineStages() {
-  const stages = document.querySelectorAll(".pipeline-stage");
-  const explanationBox = document.getElementById("stageExplanation");
-  const explanationText = document.getElementById("stageText");
-  if (!stages.length || !explanationBox || !explanationText) return;
-
-  stages.forEach((stage) => {
-    stage.addEventListener("click", () => {
-      stages.forEach((s) => s.classList.remove("active"));
-      stage.classList.add("active");
-
-      const key = stage.getAttribute("data-stage");
-      explanationText.textContent = STAGE_EXPLANATIONS[key] || "";
-      explanationBox.classList.remove("d-none");
+    toggle.addEventListener("click", function () {
+      setOpen(!isOpen());
     });
-  });
-}
 
-/* ---------------------------------------------------------------------
-   DASHBOARD CHART (current-session stats only - no fabricated history)
---------------------------------------------------------------------- */
-function initStatsChart() {
-  const canvas = document.getElementById("statsChart");
-  if (!canvas || typeof Chart === "undefined") return;
+    // Close with Escape and return focus to the trigger.
+    document.addEventListener("keydown", function (event) {
+      if (event.key === "Escape" && isOpen()) {
+        setOpen(false);
+        toggle.focus();
+      }
+    });
 
-  const real = parseInt(canvas.dataset.real || "0", 10);
-  const fake = parseInt(canvas.dataset.fake || "0", 10);
+    // Close when clicking/tapping outside the menu.
+    document.addEventListener("click", function (event) {
+      if (!isOpen()) return;
+      if (menu.contains(event.target) || toggle.contains(event.target)) return;
+      setOpen(false);
+    });
 
-  new Chart(canvas, {
-    type: "bar",
-    data: {
-      labels: ["Real News", "Fake News"],
-      datasets: [
-        {
-          label: "Current Session Predictions",
-          data: [real, fake],
-          backgroundColor: ["#1a9e5e", "#d64545"],
-          borderRadius: 6,
-        },
-      ],
-    },
-    options: {
-      responsive: true,
-      plugins: { legend: { display: false } },
-      scales: {
-        y: { beginAtZero: true, ticks: { precision: 0 } },
+    // Close after choosing a destination.
+    menu.addEventListener("click", function (event) {
+      if (event.target && event.target.closest && event.target.closest("a")) {
+        setOpen(false);
+      }
+    });
+
+    // Reset the panel when moving back to desktop layout.
+    window.addEventListener("resize", function () {
+      if (window.innerWidth > 900 && isOpen()) setOpen(false);
+    });
+  }
+
+  /* ---------------------------------------------------------------------
+     Scroll reveal (skipped entirely for reduced-motion users)
+  --------------------------------------------------------------------- */
+  function initReveals() {
+    var items = document.querySelectorAll(".reveal");
+    if (!items.length) return;
+
+    var reduce =
+      window.matchMedia &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+    var showAll = function () {
+      for (var i = 0; i < items.length; i++) items[i].classList.add("is-visible");
+    };
+
+    if (reduce || typeof IntersectionObserver === "undefined") {
+      showAll();
+      return;
+    }
+
+    var observer = new IntersectionObserver(
+      function (entries) {
+        entries.forEach(function (entry) {
+          if (!entry.isIntersecting) return;
+          entry.target.classList.add("is-visible");
+          observer.unobserve(entry.target);
+        });
       },
-    },
-  });
-}
+      { threshold: 0.08, rootMargin: "0px 0px -6% 0px" }
+    );
+
+    for (var i = 0; i < items.length; i++) observer.observe(items[i]);
+  }
+
+  /* ---------------------------------------------------------------------
+     Analysis form: counter, validation, samples, loading state
+  --------------------------------------------------------------------- */
+  function initAnalysisForm() {
+    var form = document.getElementById("detectForm");
+    if (!form) return;
+
+    var headline = document.getElementById("headline");
+    var article = document.getElementById("article");
+    var counter = document.getElementById("charCounter");
+    var warning = document.getElementById("charWarning");
+    var checkBtn = document.getElementById("checkBtn");
+    var clearBtn = document.getElementById("clearBtn");
+    var errorBox = document.getElementById("formErrors");
+
+    /* --- character counter --- */
+    function updateCounter() {
+      if (!counter) return;
+      var total = ((headline && headline.value.length) || 0) +
+                  ((article && article.value.length) || 0);
+      counter.textContent = total.toLocaleString() + " / " +
+                            MAX_CHARS.toLocaleString() + " characters";
+      counter.classList.toggle("is-over", total > MAX_CHARS);
+
+      if (warning) {
+        warning.textContent =
+          total > MAX_CHARS ? "Limit exceeded — shorten the text to continue." : "";
+      }
+      return total;
+    }
+
+    /* --- inline error message (never an alert box) --- */
+    function showError(message) {
+      if (!errorBox) return;
+      errorBox.textContent = "";
+      var row = document.createElement("div");
+      row.className = "alert alert-error";
+      var icon = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+      icon.setAttribute("class", "icon");
+      icon.setAttribute("aria-hidden", "true");
+      var use = document.createElementNS("http://www.w3.org/2000/svg", "use");
+      use.setAttribute("href", "#i-alert");
+      icon.appendChild(use);
+      var text = document.createElement("div");
+      text.textContent = message; // safe: plain text node, never HTML
+      row.appendChild(icon);
+      row.appendChild(text);
+      errorBox.appendChild(row);
+      errorBox.hidden = false;
+      errorBox.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    }
+
+    function clearError() {
+      if (!errorBox) return;
+      errorBox.textContent = "";
+      errorBox.hidden = true;
+    }
+
+    /* --- counters wired to input --- */
+    if (headline) headline.addEventListener("input", updateCounter);
+    if (article) article.addEventListener("input", updateCounter);
+    updateCounter();
+
+    /* --- sample chips --- */
+    Array.prototype.forEach.call(
+      document.querySelectorAll("[data-sample]"),
+      function (chip) {
+        chip.addEventListener("click", function () {
+          var key = chip.getAttribute("data-sample");
+          if (key === "clear" || !SAMPLES[key]) {
+            if (headline) headline.value = "";
+            if (article) article.value = "";
+            clearError();
+            updateCounter();
+            if (headline) headline.focus();
+            return;
+          }
+          if (headline) headline.value = SAMPLES[key].headline;
+          if (article) article.value = SAMPLES[key].article;
+          clearError();
+          updateCounter();
+          if (article) article.focus();
+        });
+      }
+    );
+
+    /* --- clear button --- */
+    if (clearBtn) {
+      clearBtn.addEventListener("click", function () {
+        if (headline) headline.value = "";
+        if (article) article.value = "";
+        clearError();
+        updateCounter();
+        if (headline) headline.focus();
+      });
+    }
+
+    /* --- validation + loading state --- */
+    form.addEventListener("submit", function (event) {
+      var text = ((headline && headline.value) || "").trim();
+      var body = ((article && article.value) || "").trim();
+
+      if (!text && !body) {
+        event.preventDefault();
+        showError("Please enter a news headline or article before checking.");
+        if (headline) headline.focus();
+        return;
+      }
+
+      var total = text.length + body.length;
+      if (total > MAX_CHARS) {
+        event.preventDefault();
+        showError(
+          "Input is too long. Please limit your text to " +
+            MAX_CHARS.toLocaleString() + " characters."
+        );
+        return;
+      }
+
+      if (checkBtn && !checkBtn.dataset.modelMissing) {
+        // Reveal the loading state without delaying the request itself.
+        checkBtn.classList.add("is-loading");
+        checkBtn.setAttribute("aria-disabled", "true");
+      }
+    });
+
+    // The page may come back from the back/forward cache with the button
+    // still in its loading state — restore it.
+    window.addEventListener("pageshow", function () {
+      if (!checkBtn) return;
+      checkBtn.classList.remove("is-loading");
+      checkBtn.removeAttribute("aria-disabled");
+    });
+  }
+})();

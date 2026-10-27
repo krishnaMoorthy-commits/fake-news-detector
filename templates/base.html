@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#080D1A">
+<meta name="description" content="{% block meta_description %}Fake News Detection Using Data Science — analyze news text with machine learning and natural language processing.{% endblock %}">
+<title>{% block title %}Fake News Detection — AI News Analysis{% endblock %}</title>
+<script>document.documentElement.classList.add('js');</script>
+<link rel="icon" href="{{ url_for('static', filename='img/favicon.svg') }}" type="image/svg+xml">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+{% block head %}{% endblock %}
+</head>
+
+<body>
+<a class="skip-link" href="#main">Skip to main content</a>
+
+{# ------------------------------------------------------------------ #}
+{# Icon sprite: every icon used across the site is defined once here.  #}
+{# ------------------------------------------------------------------ #}
+<svg class="icon-sprite" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+  <symbol id="i-home" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M3 10.6 12 3.2l9 7.4"/><path d="M5.6 9.4V19.8a1 1 0 0 0 1 1H10v-5.6h4v5.6h3.4a1 1 0 0 0 1-1V9.4"/>
+  </symbol>
+  <symbol id="i-scan" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M4 8.5V6a2 2 0 0 1 2-2h2.5"/><path d="M15.5 4H18a2 2 0 0 1 2 2v2.5"/>
+    <path d="M20 15.5V18a2 2 0 0 1-2 2h-2.5"/><path d="M8.5 20H6a2 2 0 0 1-2-2v-2.5"/>
+    <path d="M4.5 12h15"/>
+  </symbol>
+  <symbol id="i-layers" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M12 3.4 3.6 7.6 12 11.8l8.4-4.2L12 3.4Z"/><path d="M3.6 12.4 12 16.6l8.4-4.2"/><path d="M3.6 16.8 12 21l8.4-4.2"/>
+  </symbol>
+  <symbol id="i-info" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="12" cy="12" r="8.6"/><path d="M12 11v5.2"/><path d="M12 7.9h.01"/>
+  </symbol>
+  <symbol id="i-arrow-right" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M4.5 12h14"/><path d="m13 6.5 5.5 5.5L13 17.5"/>
+  </symbol>
+  <symbol id="i-arrow-down" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M12 4.5v14"/><path d="m6.5 13 5.5 5.5L17.5 13"/>
+  </symbol>
+  <symbol id="i-menu" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+    <path d="M4 7h16"/><path d="M4 12h16"/><path d="M4 17h16"/>
+  </symbol>
+  <symbol id="i-close" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+    <path d="M6.5 6.5 17.5 17.5"/><path d="M17.5 6.5 6.5 17.5"/>
+  </symbol>
+  <symbol id="i-check-circle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="12" cy="12" r="8.6"/><path d="m8.3 12.2 2.6 2.6 4.8-5.2"/>
+  </symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M10.7 4.3 2.9 17.8a1.5 1.5 0 0 0 1.3 2.3h15.6a1.5 1.5 0 0 0 1.3-2.3L13.3 4.3a1.5 1.5 0 0 0-2.6 0Z"/>
+    <path d="M12 9.6v4"/><path d="M12 16.9h.01"/>
+  </symbol>
+  <symbol id="i-cpu" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="6.5" y="6.5" width="11" height="11" rx="2"/><rect x="10" y="10" width="4" height="4" rx="1"/>
+    <path d="M9.5 3.5v3M14.5 3.5v3M9.5 17.5v3M14.5 17.5v3M3.5 9.5h3M3.5 14.5h3M17.5 9.5h3M17.5 14.5h3"/>
+  </symbol>
+  <symbol id="i-text" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M4.5 6.5h15"/><path d="M4.5 11h11"/><path d="M4.5 15.5h13"/><path d="M4.5 20h8"/>
+  </symbol>
+  <symbol id="i-branch" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="6" cy="6" r="2.4"/><circle cx="18" cy="6" r="2.4"/><circle cx="12" cy="18" r="2.4"/>
+    <path d="M6 8.4v2.1a1.5 1.5 0 0 0 1.5 1.5h9a1.5 1.5 0 0 0 1.5-1.5V8.4"/>
+    <path d="M12 12v3.6"/>
+  </symbol>
+  <symbol id="i-pulse" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M3 12h3.6l2.2-6 3.4 12 2.3-6H21"/>
+  </symbol>
+  <symbol id="i-shield" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M12 3.2 5 5.8v5.4c0 4.2 2.8 7.6 7 9.6 4.2-2 7-5.4 7-9.6V5.8L12 3.2Z"/>
+    <path d="m9.2 12.1 2 2 3.6-4"/>
+  </symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="12" cy="12" r="8.6"/><path d="M12 7.4V12l3 1.8"/>
+  </symbol>
+  <symbol id="i-chart" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M4 20V4"/><path d="M4 20h16"/><path d="M8 16.5v-4"/><path d="M12.7 16.5V8.6"/><path d="M17.3 16.5v-6.2"/>
+  </symbol>
+  <symbol id="i-database" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+    <ellipse cx="12" cy="6.3" rx="7.2" ry="2.9"/><path d="M4.8 6.3v11.4c0 1.6 3.2 2.9 7.2 2.9s7.2-1.3 7.2-2.9V6.3"/>
+    <path d="M4.8 12c0 1.6 3.2 2.9 7.2 2.9s7.2-1.3 7.2-2.9"/>
+  </symbol>
+  <symbol id="i-code" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+    <path d="m8.5 8.5-4 3.5 4 3.5"/><path d="m15.5 8.5 4 3.5-4 3.5"/><path d="m13.4 5.5-2.8 13"/>
+  </symbol>
+  <symbol id="i-doc" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M14 3.2H7.4a1.6 1.6 0 0 0-1.6 1.6v14.4a1.6 1.6 0 0 0 1.6 1.6h9.2a1.6 1.6 0 0 0 1.6-1.6V7.6L14 3.2Z"/>
+    <path d="M13.8 3.4v4.2h4.4"/><path d="M8.8 12.6h6.4"/><path d="M8.8 16.2h4.6"/>
+  </symbol>
+  <symbol id="i-target" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="12" cy="12" r="8.6"/><circle cx="12" cy="12" r="4.6"/><circle cx="12" cy="12" r=".9"/>
+  </symbol>
+  <symbol id="i-list" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M9 6.5h11"/><path d="M9 12h11"/><path d="M9 17.5h11"/>
+    <path d="M4.4 6.5h.01"/><path d="M4.4 12h.01"/><path d="M4.4 17.5h.01"/>
+  </symbol>
+  <symbol id="i-lightbulb" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M9.4 17.2a6.2 6.2 0 1 1 5.2 0"/>
+    <path d="M9.5 20.3h5"/><path d="M10.3 22.6h3.4"/>
+    <path d="M12 7.6a2.6 2.6 0 0 0-1.5 4.7c.4.3.6.7.6 1.2h1.8c0-.5.2-.9.6-1.2A2.6 2.6 0 0 0 12 7.6Z"/>
+  </symbol>
+</svg>
+
+{# ------------------------------------------------------------------ #}
+{# Header                                                              #}
+{# ------------------------------------------------------------------ #}
+{% set active = active_page|default('') %}
+<header class="site-header" id="top">
+  <div class="container nav">
+    <a class="brand" href="{{ url_for('index') }}" aria-label="Fake News Detection — home">
+      <span class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 32 32" role="presentation" focusable="false">
+          <defs>
+            <linearGradient id="brandGrad" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0%" stop-color="#38BDF8"/>
+              <stop offset="100%" stop-color="#6366F1"/>
+            </linearGradient>
+          </defs>
+          <path d="M16 2.6 5.4 6.6v9.1c0 6.7 4.4 12.2 10.6 15.4 6.2-3.2 10.6-8.7 10.6-15.4V6.6L16 2.6Z"
+                fill="none" stroke="url(#brandGrad)" stroke-width="2.1" stroke-linejoin="round"/>
+          <path d="M11.4 16.1l3.2 3.2 6-6.4" fill="none" stroke="url(#brandGrad)" stroke-width="2.1"
+                stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </span>
+      <span class="brand-text">
+        <span class="brand-name">Fake News Detection</span>
+        <span class="brand-sub">Data Science Project</span>
+      </span>
+    </a>
+
+    <button class="nav-toggle" type="button" id="navToggle" aria-expanded="false" aria-controls="navMenu">
+      <svg class="icon nav-icon-open" aria-hidden="true"><use href="#i-menu"></use></svg>
+      <svg class="icon nav-icon-close" aria-hidden="true"><use href="#i-close"></use></svg>
+      <span class="sr-only">Menu</span>
+    </button>
+
+    <nav class="nav-menu" id="navMenu" aria-label="Primary">
+      <ul class="nav-list">
+        <li><a class="nav-link{% if active == 'index' %} is-active{% endif %}" href="{{ url_for('index') }}"{% if active == 'index' %} aria-current="page"{% endif %}>Home</a></li>
+        <li><a class="nav-link{% if active in ('detect', 'predict') %} is-active{% endif %}" href="{{ url_for('detect') }}"{% if active in ('detect', 'predict') %} aria-current="page"{% endif %}>Detect News</a></li>
+        <li><a class="nav-link" href="{{ url_for('index') }}#how-it-works">How It Works</a></li>
+        <li><a class="nav-link{% if active == 'about' %} is-active{% endif %}" href="{{ url_for('about') }}"{% if active == 'about' %} aria-current="page"{% endif %}>About Project</a></li>
+      </ul>
+      <a class="btn btn-primary btn-sm nav-cta{% if active in ('detect', 'predict') %} is-active{% endif %}" href="{{ url_for('detect') }}">
+        Analyze News
+        <svg class="icon" aria-hidden="true"><use href="#i-arrow-right"></use></svg>
+      </a>
+    </nav>
+  </div>
+</header>
+
+<main id="main">
+{% block content %}{% endblock %}
+</main>
+
+{# ------------------------------------------------------------------ #}
+{# Footer                                                              #}
+{# ------------------------------------------------------------------ #}
+<footer class="site-footer">
+  <div class="container footer-grid">
+    <div class="footer-brand">
+      <a class="brand" href="{{ url_for('index') }}">
+        <span class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 32 32" role="presentation" focusable="false">
+            <path d="M16 2.6 5.4 6.6v9.1c0 6.7 4.4 12.2 10.6 15.4 6.2-3.2 10.6-8.7 10.6-15.4V6.6L16 2.6Z"
+                  fill="none" stroke="url(#brandGrad)" stroke-width="2.1" stroke-linejoin="round"/>
+            <path d="M11.4 16.1l3.2 3.2 6-6.4" fill="none" stroke="url(#brandGrad)" stroke-width="2.1"
+                  stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </span>
+        <span class="brand-text">
+          <span class="brand-name">Fake News Detection</span>
+          <span class="brand-sub">Data Science Project</span>
+        </span>
+      </a>
+      <p class="footer-desc">
+        A college Data Science project that applies text preprocessing, TF-IDF features and a
+        trained classifier to explore how machine learning can flag text resembling patterns
+        found in misleading news.
+      </p>
+    </div>
+
+    <nav class="footer-col" aria-label="Footer">
+      <h2 class="footer-title">Navigate</h2>
+      <ul class="footer-links">
+        <li><a href="{{ url_for('index') }}">Home</a></li>
+        <li><a href="{{ url_for('detect') }}">Detect News</a></li>
+        <li><a href="{{ url_for('index') }}#how-it-works">How It Works</a></li>
+        <li><a href="{{ url_for('about') }}">About Project</a></li>
+      </ul>
+    </nav>
+
+    <div class="footer-col">
+      <h2 class="footer-title">Built with</h2>
+      <ul class="footer-links footer-tech">
+        <li>Python &amp; Flask</li>
+        <li>scikit-learn (TF-IDF + Logistic Regression)</li>
+        <li>pandas &amp; NumPy</li>
+        <li>joblib &amp; gunicorn</li>
+        <li>HTML, CSS &amp; JavaScript</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="container footer-note">
+    <p>
+      <strong>Model limitation:</strong> output is a statistical model prediction, not a fact-check.
+      It does not verify claims against independent sources and can be wrong — always confirm
+      information with reliable reporting.
+    </p>
+  </div>
+
+  <div class="container footer-bottom">
+    <p>&copy; {{ current_year|default(2026) }} Fake News Detection Using Data Science &mdash; College Academic Project.</p>
+    <a class="footer-top" href="#top">Back to top</a>
+  </div>
+</footer>
+
+<script src="{{ url_for('static', filename='js/script.js') }}"></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

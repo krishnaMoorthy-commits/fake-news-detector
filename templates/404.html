@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+
+{% block title %}Page not found — Fake News Detection{% endblock %}
+{% block meta_description %}The page you requested could not be found.{% endblock %}
+
+{% block content %}
+<section class="section">
+  <div class="container">
+    <div class="empty-state reveal">
+      <p class="empty-code">404</p>
+      <h1>That page could not be found</h1>
+      <p class="muted">
+        The link may be out of date, or the address may contain a typo. Nothing was lost —
+        the detection tool is one click away.
+      </p>
+      <div class="empty-actions">
+        <a class="btn btn-primary" href="{{ url_for('detect') }}">
+          <svg class="icon" aria-hidden="true"><use href="#i-scan"></use></svg>
+          Analyze News
+        </a>
+        <a class="btn btn-secondary" href="{{ url_for('index') }}">Back to home</a>
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}

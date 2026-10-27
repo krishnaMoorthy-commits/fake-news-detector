@@ -5,10 +5,12 @@ Flask web application for the "Fake News Detection Using Data Science"
 college project.
 
 Routes:
-    GET  /            -> home page (detection form)
-    POST /predict      -> runs the ML prediction and renders the result page
-    GET  /about         -> about page
-    GET  /dashboard     -> current-session statistics (also embedded on home)
+    GET  /            -> redesigned home page (hero, pipeline, live preview form)
+    GET  /detect      -> dedicated news-input / prediction form page
+    POST /predict     -> runs the ML prediction and renders the result page
+    GET  /about       -> about page (including the model card)
+    GET  /healthz     -> lightweight health check used by the hosting platform
+    404 / 500         -> friendly error pages
 
 Session-based statistics (total checked / real / fake) are stored in the
 Flask session so that each visitor sees their own running counts. This is
@@ -19,6 +21,7 @@ college demonstration project.
 
 import os
 import secrets
+from datetime import date
 
 from flask import Flask, render_template, request, session
 
@@ -59,10 +62,36 @@ def update_stats(label: str) -> dict:
     return stats
 
 
+def get_model_metrics() -> dict:
+    """
+    Return the evaluation metrics recorded inside the trained model bundle.
+
+    These numbers are produced by train_model.py at training time and saved
+    into model/fake_news_model.pkl alongside the vectorizer and classifier.
+    Nothing here is hard-coded: if the bundle carries no metrics (for example
+    a model trained by an older script), an empty dict is returned and the
+    About page renders an explanatory message instead of showing figures.
+    """
+    try:
+        bundle = ml.load_model()
+    except Exception:  # noqa: BLE001 - missing/corrupt model must not break the page
+        return {}
+
+    metrics = bundle.get("metrics")
+    if isinstance(metrics, dict) and metrics:
+        return metrics
+    return {}
+
+
 @app.context_processor
 def inject_stats():
-    """Make current stats available to every template (e.g. navbar/dashboard)."""
-    return {"stats": get_stats()}
+    """Make current stats and page context available to every template."""
+    return {
+        "stats": get_stats(),
+        # Drives the active indicator in the shared navigation bar.
+        "active_page": request.endpoint or "",
+        "current_year": date.today().year,
+    }
 
 
 @app.route("/healthz")
@@ -76,9 +105,15 @@ def index():
     return render_template("index.html", model_ready=ml.model_exists())
 
 
+@app.route("/detect")
+def detect():
+    """Dedicated news-input page hosting the real prediction form."""
+    return render_template("detect.html", model_ready=ml.model_exists())
+
+
 @app.route("/about")
 def about():
-    return render_template("about.html")
+    return render_template("about.html", metrics=get_model_metrics())
 
 
 @app.route("/predict", methods=["POST"])
@@ -89,7 +124,7 @@ def predict():
     # --- Validation -------------------------------------------------------
     if not headline and not article:
         return render_template(
-            "index.html",
+            "detect.html",
             model_ready=ml.model_exists(),
             error="Please enter a news headline or article before checking.",
             headline=headline,
@@ -99,7 +134,7 @@ def predict():
     combined_length = len(headline) + len(article)
     if combined_length > MAX_INPUT_LENGTH:
         return render_template(
-            "index.html",
+            "detect.html",
             model_ready=ml.model_exists(),
             error=f"Input is too long. Please limit your text to {MAX_INPUT_LENGTH:,} characters.",
             headline=headline,
@@ -111,7 +146,7 @@ def predict():
         bundle = ml.load_model()
     except ml.ModelNotFoundError:
         return render_template(
-            "index.html",
+            "detect.html",
             model_ready=False,
             error=(
                 "The trained model is not available. Please place your dataset "
@@ -122,7 +157,7 @@ def predict():
         )
     except ml.ModelLoadError as exc:
         return render_template(
-            "index.html",
+            "detect.html",
             model_ready=False,
             error=str(exc),
             headline=headline,
@@ -135,7 +170,7 @@ def predict():
     except Exception:
         # Never leak internal stack traces to the end user.
         return render_template(
-            "index.html",
+            "detect.html",
             model_ready=ml.model_exists(),
             error="Something went wrong while analyzing this text. Please try again.",
             headline=headline,
@@ -175,7 +210,9 @@ def predict():
 
 @app.errorhandler(404)
 def not_found(_error):
-    return render_template("about.html"), 404
+    # Dedicated 404 page (previously the About page was rendered for unknown
+    # URLs, which read as a bug rather than an intentional fallback).
+    return render_template("404.html"), 404
 
 
 @app.errorhandler(500)

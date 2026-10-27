@@ -1,0 +1,102 @@
+{#
+  Reusable news-analysis form.
+  Used by the homepage preview (index.html) and the detection page (detect.html).
+
+  Expects (all optional, safe defaults applied):
+    model_ready : bool
+    error       : str  - server-side validation / model error message
+    headline    : str  - previously submitted headline (re-populated on error)
+    article     : str  - previously submitted article  (re-populated on error)
+
+  Field names, method and action are the original ones and must not change:
+    POST /predict  with  headline  and  article
+#}
+{% set mr = model_ready|default(true) %}
+{% set hl = headline|default('') %}
+{% set art = article|default('') %}
+
+{% if not mr or error %}
+<div class="alert-stack">
+  {% if not mr %}
+  <div class="alert alert-warning" role="alert">
+    <svg class="icon" aria-hidden="true"><use href="#i-alert"></use></svg>
+    <div>
+      <strong>Model not available yet.</strong>
+      Place your dataset at <code>dataset/news.csv</code> and run
+      <code>python train_model.py</code> to train and save a model before checking news.
+    </div>
+  </div>
+  {% endif %}
+
+  {% if error %}
+  <div class="alert alert-error" role="alert">
+    <svg class="icon" aria-hidden="true"><use href="#i-alert"></use></svg>
+    <div>{{ error }}</div>
+  </div>
+  {% endif %}
+</div>
+{% endif %}
+
+<form class="form" action="{{ url_for('predict') }}" method="POST" id="detectForm" aria-labelledby="formTitle">
+
+  {# Populated by script.js for client-side validation only. #}
+  <div class="alert-stack" id="formErrors" role="alert" hidden></div>
+
+  <div class="field">
+    <label class="field-label" for="headline">
+      <span>Headline</span>
+      <span class="optional">Optional</span>
+    </label>
+    <input class="input" type="text" id="headline" name="headline" maxlength="500"
+           autocomplete="off" spellcheck="true"
+           placeholder="e.g. Council approves new downtown transit plan"
+           value="{{ hl }}">
+    <p class="field-hint">Up to 500 characters.</p>
+  </div>
+
+  <div class="field">
+    <label class="field-label" for="article">
+      <span>Article text</span>
+      <span class="optional">Optional</span>
+    </label>
+    <textarea class="textarea" id="article" name="article" rows="8" maxlength="10000"
+              spellcheck="true"
+              placeholder="Paste the body of the news article here. A headline alone also works.">{{ art }}</textarea>
+    <p class="field-hint">At least one of the two fields is required. Combined limit: 10,000 characters.</p>
+  </div>
+
+  <div class="form-foot">
+    <p class="counter" id="charCounter" aria-live="polite">0 / 10,000 characters</p>
+    <p class="counter" id="charWarning" role="alert"></p>
+  </div>
+
+  <div class="samples">
+    <span class="samples-label">Try a sample:</span>
+    <button type="button" class="chip-btn" data-sample="neutral">Neutral report</button>
+    <button type="button" class="chip-btn" data-sample="sensational">Sensational claim</button>
+    <button type="button" class="chip-btn" data-sample="clear">Clear form</button>
+  </div>
+
+  <div class="form-actions">
+    <button type="submit" class="btn btn-primary btn-lg" id="checkBtn"
+            {% if not mr %}disabled data-model-missing="1"{% endif %}>
+      <span class="btn-text">
+        <svg class="icon" aria-hidden="true"><use href="#i-scan"></use></svg>
+        Analyze this text
+      </span>
+      <span class="btn-loading">
+        <span class="spinner" aria-hidden="true"></span>
+        Running the model&hellip;
+      </span>
+    </button>
+    <button type="button" class="btn btn-secondary btn-lg" id="clearBtn">
+      <svg class="icon" aria-hidden="true"><use href="#i-close"></use></svg>
+      Clear
+    </button>
+  </div>
+
+  <p class="field-hint">
+    Submissions are sent to this Flask server only. Nothing is sent to an external API,
+    and the output is a model prediction rather than a verified fact-check.
+  </p>
+</form>

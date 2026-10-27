@@ -1,178 +1,264 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>About | Fake News Detection</title>
-<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
-<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-</head>
-<body>
+{% extends "base.html" %}
 
-<nav class="navbar navbar-expand-lg navbar-dark app-navbar">
+{% block title %}About Project — Fake News Detection{% endblock %}
+{% block meta_description %}How the Fake News Detection project works: data science workflow, NLP preprocessing, the implemented algorithm and the model's limitations.{% endblock %}
+
+{% block content %}
+<section class="page-hero">
   <div class="container">
-    <a class="navbar-brand fw-bold" href="{{ url_for('index') }}">
-      <i class="bi bi-shield-check"></i> FAKE NEWS DETECTION
-    </a>
-    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navMenu2">
-      <span class="navbar-toggler-icon"></span>
-    </button>
-    <div class="collapse navbar-collapse" id="navMenu2">
-      <ul class="navbar-nav ms-auto">
-        <li class="nav-item"><a class="nav-link" href="{{ url_for('index') }}">Home</a></li>
-        <li class="nav-item"><a class="nav-link" href="{{ url_for('index') }}#how-it-works">How It Works</a></li>
-        <li class="nav-item"><a class="nav-link" href="{{ url_for('index') }}#features">Features</a></li>
-        <li class="nav-item"><a class="nav-link" href="{{ url_for('index') }}#dashboard">Dashboard</a></li>
-        <li class="nav-item"><a class="nav-link active" href="{{ url_for('about') }}">About</a></li>
+    <ol class="breadcrumb">
+      <li><a href="{{ url_for('index') }}">Home</a></li>
+      <li aria-hidden="true"><svg class="icon"><use href="#i-arrow-right"></use></svg></li>
+      <li aria-current="page">About Project</li>
+    </ol>
+    <p class="eyebrow">About project</p>
+    <h1>Fake News Detection Using Data Science</h1>
+    <p class="muted">
+      An academic project that walks the full path from raw text to a trained classifier to a
+      usable web interface — with an explicit statement of what it cannot do.
+    </p>
+  </div>
+</section>
+
+<section class="section">
+  <div class="container prose">
+
+    <section class="prose-section reveal">
+      <h2><svg class="icon" aria-hidden="true"><use href="#i-info"></use></svg> Introduction</h2>
+      <p>
+        Fake news refers to false or misleading information presented as legitimate news. The
+        rapid spread of misinformation through social media and online platforms has made it
+        increasingly difficult for readers to distinguish credible reporting from fabricated or
+        misleading content.
+      </p>
+      <p>
+        This project explores how Data Science and Machine Learning techniques can be applied to
+        automatically flag text that resembles patterns commonly found in misleading news
+        articles.
+      </p>
+    </section>
+
+    <section class="prose-section reveal">
+      <h2><svg class="icon" aria-hidden="true"><use href="#i-lightbulb"></use></svg> Why detection matters</h2>
+      <p>
+        Automated analysis can help triage large volumes of text far faster than manual review,
+        giving readers, moderators and researchers an additional signal to consider. While it
+        cannot replace human judgement or professional fact-checking, it can act as a useful
+        first-pass filter, especially at scale.
+      </p>
+    </section>
+
+    <section class="prose-section reveal">
+      <h2><svg class="icon" aria-hidden="true"><use href="#i-layers"></use></svg> The role of Data Science</h2>
+      <p>
+        This project follows a standard Data Science workflow: collecting labelled data, cleaning
+        and preparing the text, engineering numerical features from that text, training a Machine
+        Learning model on those features, and evaluating how well the trained model generalizes
+        to unseen examples.
+      </p>
+    </section>
+
+    <section class="prose-section reveal">
+      <h2><svg class="icon" aria-hidden="true"><use href="#i-text"></use></svg> Natural Language Processing</h2>
+      <p>
+        Before any modelling can happen, raw text must be converted into a form a computer can
+        work with. This involves lowercasing, removing HTML, URLs and punctuation, and
+        normalizing whitespace, followed by numerical representation via TF-IDF
+        (Term Frequency &ndash; Inverse Document Frequency), which weighs words by how
+        distinctive they are across the dataset.
+      </p>
+      <div class="result-block" style="margin-top:1rem;">
+        <strong>Preprocessing actually executed</strong><br>
+        <span class="mono">lowercase &rarr; strip HTML tags &rarr; strip URLs &rarr; strip
+        punctuation and digits &rarr; collapse whitespace</span>
+      </div>
+    </section>
+
+    <section class="prose-section reveal">
+      <h2><svg class="icon" aria-hidden="true"><use href="#i-cpu"></use></svg> Machine Learning</h2>
+      <p>
+        Once text is represented numerically, a supervised classification algorithm is trained on
+        examples labelled REAL or FAKE. The trained model learns statistical patterns that
+        correlate with each class and uses them to classify new, unseen text.
+      </p>
+    </section>
+
+    <section class="prose-section reveal">
+      <h2><svg class="icon" aria-hidden="true"><use href="#i-branch"></use></svg> Algorithms: discussed vs. implemented</h2>
+      <p class="muted small">
+        The algorithms below are discussed for academic completeness. Only
+        <strong>Logistic Regression with TF-IDF features</strong> is wired into this web
+        application.
+      </p>
+
+      <div class="algo-grid">
+        <article class="algo is-implemented">
+          <h3>Logistic Regression
+            <span class="badge badge-real">
+              <svg class="icon" aria-hidden="true"><use href="#i-check-circle"></use></svg>
+              Implemented
+            </span>
+          </h3>
+          <p>A linear model that estimates the probability of a class using a sigmoid function.
+             Simple, fast and interpretable — well suited to sparse TF-IDF text features.</p>
+        </article>
+
+        <article class="algo">
+          <h3>Naive Bayes <span class="badge">Discussed</span></h3>
+          <p>A probabilistic classifier based on Bayes' theorem, assuming feature independence.
+             Popular for text classification due to its speed and simplicity.</p>
+        </article>
+
+        <article class="algo">
+          <h3>Decision Tree <span class="badge">Discussed</span></h3>
+          <p>A tree-structured model that splits data based on feature values. Easy to interpret
+             but prone to overfitting on high-dimensional text data.</p>
+        </article>
+
+        <article class="algo">
+          <h3>Random Forest <span class="badge">Discussed</span></h3>
+          <p>An ensemble of decision trees that averages predictions to reduce overfitting and
+             improve generalization.</p>
+        </article>
+
+        <article class="algo">
+          <h3>Support Vector Machine <span class="badge">Discussed</span></h3>
+          <p>Finds an optimal separating hyperplane between classes; effective in
+             high-dimensional spaces such as TF-IDF vectors.</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="prose-section reveal">
+      <h2><svg class="icon" aria-hidden="true"><use href="#i-chart"></use></svg> Model card</h2>
+
+      {% if metrics %}
+      <p>
+        The figures below are read directly from the trained model file that ships with this
+        project. They were recorded by <span class="mono">train_model.py</span> during the last
+        training run, on a held-out test split of your own dataset — they are not marketing
+        numbers, and nothing here is hard-coded into the interface.
+      </p>
+
+      <div class="stat-tiles" style="margin-top:1.25rem;">
+        <div class="stat-tile">
+          <svg class="icon" aria-hidden="true"><use href="#i-target"></use></svg>
+          <div class="stat-value">{{ metrics.accuracy }}%</div>
+          <div class="stat-label">Test accuracy</div>
+        </div>
+        <div class="stat-tile">
+          <svg class="icon" aria-hidden="true"><use href="#i-pulse"></use></svg>
+          <div class="stat-value">{{ metrics.precision }}%</div>
+          <div class="stat-label">Precision (FAKE)</div>
+        </div>
+        <div class="stat-tile">
+          <svg class="icon" aria-hidden="true"><use href="#i-scan"></use></svg>
+          <div class="stat-value">{{ metrics.recall }}%</div>
+          <div class="stat-label">Recall (FAKE)</div>
+        </div>
+        <div class="stat-tile">
+          <svg class="icon" aria-hidden="true"><use href="#i-chart"></use></svg>
+          <div class="stat-value">{{ metrics.f1_score }}%</div>
+          <div class="stat-label">F1 score (FAKE)</div>
+        </div>
+      </div>
+
+      <div class="share-legend" style="margin-top:1rem;">
+        <span class="legend-key">
+          Training rows: <strong class="mono">{{ metrics.train_size }}</strong>
+        </span>
+        <span class="legend-key">
+          Held-out test rows: <strong class="mono">{{ metrics.test_size }}</strong>
+        </span>
+        <span class="legend-key">
+          Split: <strong class="mono">80 / 20, stratified</strong>
+        </span>
+      </div>
+
+      <div class="alert alert-info" role="note" style="margin-top:1.25rem;">
+        <svg class="icon" aria-hidden="true"><use href="#i-info"></use></svg>
+        <div>
+          These metrics describe how the model performed on data drawn from the <em>same</em>
+          dataset it was trained on. Real-world headlines, other topics or other languages will
+          produce different results.
+        </div>
+      </div>
+
+      {% else %}
+      <div class="alert alert-warning" role="note">
+        <svg class="icon" aria-hidden="true"><use href="#i-alert"></use></svg>
+        <div>
+          No training metrics are stored inside the model file yet. Run
+          <code>python train_model.py</code> after providing <code>dataset/news.csv</code> and
+          the recorded evaluation figures will appear here.
+        </div>
+      </div>
+      {% endif %}
+    </section>
+
+    <section class="prose-section reveal">
+      <h2><svg class="icon" aria-hidden="true"><use href="#i-target"></use></svg> Applications</h2>
+      <p class="muted small">Domains where text-based screening is commonly discussed:</p>
+      <div class="tag-cloud">
+        <span class="badge">Social media posts</span>
+        <span class="badge">Health news</span>
+        <span class="badge">Political news</span>
+        <span class="badge">Sports news</span>
+        <span class="badge">Celebrity news</span>
+        <span class="badge">Disaster news</span>
+        <span class="badge">Financial news</span>
+        <span class="badge">Education news</span>
+      </div>
+    </section>
+
+    <section class="prose-section reveal">
+      <h2><svg class="icon" aria-hidden="true"><use href="#i-check-circle"></use></svg> Advantages</h2>
+      <ul>
+        <li>Fast, automated classification of large volumes of text</li>
+        <li>Scalable text processing pipeline</li>
+        <li>Consistent, data-driven decision criteria</li>
+        <li>Can be retrained as new labelled data becomes available</li>
+        <li>Runs entirely in one Flask application with no external service dependency</li>
       </ul>
+    </section>
+
+    <section class="prose-section reveal">
+      <h2><svg class="icon" aria-hidden="true"><use href="#i-alert"></use></svg> Challenges and limitations</h2>
+      <ul>
+        <li>Fake news tactics and topics constantly evolve</li>
+        <li>Sarcasm and satire can be difficult for models to detect</li>
+        <li>Machine Learning models can and do produce incorrect predictions</li>
+        <li>Reliable, well-labelled training data is required</li>
+        <li>Dataset bias can affect prediction quality</li>
+        <li>Text-based classification does not independently verify facts against the real world</li>
+        <li>Session statistics are per-visitor and are not stored in a database</li>
+      </ul>
+    </section>
+
+    <section class="prose-section reveal">
+      <h2><svg class="icon" aria-hidden="true"><use href="#i-doc"></use></svg> Conclusion</h2>
+      <p>
+        This project demonstrates, at an academic level, how Data Science and Machine Learning
+        techniques can be combined to build a functional text classification system for
+        fake-news detection. Its value is educational and exploratory: it shows the end-to-end
+        pipeline from raw text to a trained model to a usable web interface.
+      </p>
+      <p>
+        It is <strong>not</strong> a certified fact-checking tool, and its predictions should
+        always be treated as a statistical signal rather than a verified conclusion.
+      </p>
+    </section>
+
+    <div class="form-actions reveal" style="margin-top:2rem;">
+      <a class="btn btn-primary" href="{{ url_for('detect') }}">
+        Analyze News
+        <svg class="icon icon-arrow" aria-hidden="true"><use href="#i-arrow-right"></use></svg>
+      </a>
+      <a class="btn btn-secondary" href="{{ url_for('index') }}#how-it-works">
+        See how it works
+      </a>
     </div>
+
   </div>
-</nav>
-
-<header class="about-hero text-center">
-  <div class="container">
-    <h1 class="hero-title-sm">About This Project</h1>
-    <p class="hero-subtitle">Fake News Detection Using Data Science</p>
-  </div>
-</header>
-
-<main class="container about-content py-5">
-
-  <section class="about-section">
-    <h3><i class="bi bi-info-circle"></i> Introduction</h3>
-    <p>Fake news refers to false or misleading information presented as legitimate news. The rapid spread of
-    misinformation through social media and online platforms has made it increasingly difficult for readers to
-    distinguish credible reporting from fabricated or misleading content. This project explores how Data Science
-    and Machine Learning techniques can be applied to automatically flag text that resembles patterns commonly
-    found in misleading news articles.</p>
-  </section>
-
-  <section class="about-section">
-    <h3><i class="bi bi-lightbulb"></i> Importance of Fake-News Detection</h3>
-    <p>Automated analysis can help triage large volumes of text far faster than manual review, giving readers,
-    moderators, and researchers an additional signal to consider. While it cannot replace human judgement or
-    professional fact-checking, it can act as a useful first-pass filter, especially at scale.</p>
-  </section>
-
-  <section class="about-section">
-    <h3><i class="bi bi-diagram-3"></i> Role of Data Science</h3>
-    <p>This project follows a standard Data Science workflow: collecting labelled data, cleaning and preparing the
-    text, engineering numerical features from that text, training a Machine Learning model on those features, and
-    evaluating how well the trained model generalizes to unseen examples.</p>
-  </section>
-
-  <section class="about-section">
-    <h3><i class="bi bi-chat-square-text"></i> Natural Language Processing</h3>
-    <p>Before any modelling can happen, raw text must be converted into a form a computer can work with. This
-    involves lowercasing, removing HTML/URLs/punctuation, and normalizing whitespace, followed by numerical
-    representation via TF-IDF (Term Frequency &ndash; Inverse Document Frequency), which weighs words by how
-    distinctive they are across the dataset.</p>
-  </section>
-
-  <section class="about-section">
-    <h3><i class="bi bi-cpu"></i> Machine Learning</h3>
-    <p>Once text is represented numerically, a supervised classification algorithm is trained on examples labelled
-    REAL or FAKE. The trained model learns statistical patterns that correlate with each class and uses them to
-    classify new, unseen text.</p>
-  </section>
-
-  <section class="about-section">
-    <h3><i class="bi bi-list-check"></i> Algorithms</h3>
-    <p class="text-muted"><em>The following algorithms are discussed as part of the academic project. Only
-    Logistic Regression + TF-IDF is actually implemented in this web application (see below).</em></p>
-    <div class="row g-3 mt-2">
-      <div class="col-md-6">
-        <div class="algo-card algo-implemented">
-          <h6><i class="bi bi-check-circle-fill"></i> Logistic Regression <span class="badge bg-success">Implemented</span></h6>
-          <p class="small mb-0">A linear model that estimates the probability of a class using a sigmoid function.
-          Simple, fast, and interpretable &mdash; well suited to sparse TF-IDF text features.</p>
-        </div>
-      </div>
-      <div class="col-md-6">
-        <div class="algo-card">
-          <h6><i class="bi bi-circle"></i> Naive Bayes <span class="badge bg-secondary">Discussed</span></h6>
-          <p class="small mb-0">A probabilistic classifier based on Bayes' theorem, assuming feature independence.
-          Popular for text classification due to its speed and simplicity.</p>
-        </div>
-      </div>
-      <div class="col-md-6">
-        <div class="algo-card">
-          <h6><i class="bi bi-circle"></i> Decision Tree <span class="badge bg-secondary">Discussed</span></h6>
-          <p class="small mb-0">A tree-structured model that splits data based on feature values. Easy to
-          interpret but prone to overfitting on high-dimensional text data.</p>
-        </div>
-      </div>
-      <div class="col-md-6">
-        <div class="algo-card">
-          <h6><i class="bi bi-circle"></i> Random Forest <span class="badge bg-secondary">Discussed</span></h6>
-          <p class="small mb-0">An ensemble of decision trees that averages predictions to reduce overfitting and
-          improve generalization.</p>
-        </div>
-      </div>
-      <div class="col-md-6">
-        <div class="algo-card">
-          <h6><i class="bi bi-circle"></i> Support Vector Machine <span class="badge bg-secondary">Discussed</span></h6>
-          <p class="small mb-0">Finds an optimal separating hyperplane between classes; effective in
-          high-dimensional spaces such as TF-IDF vectors.</p>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <section class="about-section">
-    <h3><i class="bi bi-grid"></i> Applications</h3>
-    <div class="d-flex flex-wrap gap-2 mt-2">
-      <span class="badge app-badge">Social Media Posts</span>
-      <span class="badge app-badge">Health News</span>
-      <span class="badge app-badge">Political News</span>
-      <span class="badge app-badge">Sports News</span>
-      <span class="badge app-badge">Celebrity News</span>
-      <span class="badge app-badge">Disaster News</span>
-      <span class="badge app-badge">Financial News</span>
-      <span class="badge app-badge">Education News</span>
-    </div>
-  </section>
-
-  <section class="about-section">
-    <h3><i class="bi bi-graph-up-arrow"></i> Advantages</h3>
-    <ul>
-      <li>Fast, automated classification of large volumes of text</li>
-      <li>Scalable text processing pipeline</li>
-      <li>Consistent, data-driven decision criteria</li>
-      <li>Can be retrained as new labelled data becomes available</li>
-    </ul>
-  </section>
-
-  <section class="about-section">
-    <h3><i class="bi bi-exclamation-triangle"></i> Challenges</h3>
-    <ul>
-      <li>Fake news tactics and topics constantly evolve</li>
-      <li>Sarcasm and satire can be difficult for models to detect</li>
-      <li>Machine Learning models can and do produce incorrect predictions</li>
-      <li>Reliable, well-labelled training data is required</li>
-      <li>Dataset bias can affect prediction quality</li>
-      <li>Text-based classification does not independently verify facts against the real world</li>
-    </ul>
-  </section>
-
-  <section class="about-section">
-    <h3><i class="bi bi-flag"></i> Conclusion</h3>
-    <p>This project demonstrates, at an academic level, how Data Science and Machine Learning techniques can be
-    combined to build a functional text classification system for fake-news detection. Its value is educational
-    and exploratory: it shows the end-to-end pipeline from raw text to a trained model to a usable web interface.
-    It is <strong>not</strong> a certified fact-checking tool, and its predictions should always be treated as a
-    statistical signal rather than a verified conclusion.</p>
-  </section>
-
-</main>
-
-<footer class="app-footer text-center">
-  <div class="container">
-    <p class="mb-0 small text-muted">Fake News Detection Using Data Science &mdash; College Academic Project</p>
-  </div>
-</footer>
-
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-</body>
-</html>
+</section>
+{% endblock %}

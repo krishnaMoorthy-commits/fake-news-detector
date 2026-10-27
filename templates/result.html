@@ -1,113 +1,164 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Result | Fake News Detection</title>
-<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
-<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-</head>
-<body>
+{% extends "base.html" %}
 
-<nav class="navbar navbar-expand-lg navbar-dark app-navbar">
+{% block title %}Prediction Result — Fake News Detection{% endblock %}
+{% block meta_description %}Review the machine-learning prediction for the submitted news text, including the confidence score where available.{% endblock %}
+
+{% block content %}
+{% set is_real = (label == 'REAL') %}
+
+<section class="page-hero">
   <div class="container">
-    <a class="navbar-brand fw-bold" href="{{ url_for('index') }}">
-      <i class="bi bi-shield-check"></i> FAKE NEWS DETECTION
-    </a>
-    <a href="{{ url_for('index') }}" class="btn btn-outline-light btn-sm">
-      <i class="bi bi-arrow-left"></i> Back to Home
-    </a>
+    <ol class="breadcrumb">
+      <li><a href="{{ url_for('index') }}">Home</a></li>
+      <li aria-hidden="true"><svg class="icon"><use href="#i-arrow-right"></use></svg></li>
+      <li><a href="{{ url_for('detect') }}">Detect News</a></li>
+      <li aria-hidden="true"><svg class="icon"><use href="#i-arrow-right"></use></svg></li>
+      <li aria-current="page">Result</li>
+    </ol>
+    <p class="eyebrow">Analysis complete</p>
+    <h1>Prediction result</h1>
+    <p class="muted">
+      The label below was produced by the trained model in this application.
+    </p>
   </div>
-</nav>
+</section>
 
-<main class="container py-5">
-  <div class="row justify-content-center">
-    <div class="col-lg-8">
+<section class="section">
+  <div class="container" style="max-width:940px;">
 
-      <div class="card result-card shadow-lg {{ 'result-real' if label == 'REAL' else 'result-fake' }}">
-        <div class="card-body p-4 p-md-5 text-center">
-
-          {% if label == 'REAL' %}
-            <i class="bi bi-patch-check-fill result-icon"></i>
-            <h2 class="result-label text-success">REAL NEWS</h2>
-          {% else %}
-            <i class="bi bi-exclamation-triangle-fill result-icon"></i>
-            <h2 class="result-label text-danger">FAKE NEWS</h2>
-          {% endif %}
-
-          {% if confidence is not none %}
-          <div class="confidence-wrap my-3">
-            <div class="d-flex justify-content-between small text-muted mb-1">
-              <span>Confidence</span>
-              <span>{{ confidence }}%</span>
-            </div>
-            <div class="progress" style="height: 10px;">
-              <div class="progress-bar {{ 'bg-success' if label == 'REAL' else 'bg-danger' }}"
-                   role="progressbar" style="width: {{ confidence }}%;"
-                   aria-valuenow="{{ confidence }}" aria-valuemin="0" aria-valuemax="100"></div>
-            </div>
-          </div>
-          {% endif %}
-
-          <hr class="my-4">
-
-          <div class="text-start">
-            {% if headline %}
-            <p class="mb-1"><strong>Headline:</strong></p>
-            <p class="text-muted">{{ headline }}</p>
+    {# ---------------- Verdict ---------------- #}
+    <article class="verdict {{ 'verdict-real' if is_real else 'verdict-fake' }} reveal"
+             aria-labelledby="verdictLabel">
+      <div class="verdict-top">
+        <span class="verdict-badge" aria-hidden="true">
+          <svg class="icon"><use href="{{ '#i-check-circle' if is_real else '#i-alert' }}"></use></svg>
+        </span>
+        <div>
+          <p class="verdict-eyebrow">Model prediction</p>
+          <h2 class="verdict-label" id="verdictLabel">
+            {% if is_real %}
+              <span class="badge badge-real">
+                <svg class="icon" aria-hidden="true"><use href="#i-check-circle"></use></svg>
+                REAL
+              </span>
+              Labelled likely real
+            {% else %}
+              <span class="badge badge-fake">
+                <svg class="icon" aria-hidden="true"><use href="#i-alert"></use></svg>
+                FAKE
+              </span>
+              Labelled potentially misleading
             {% endif %}
-
-            {% if article_preview %}
-            <p class="mb-1"><strong>Article Preview:</strong></p>
-            <p class="text-muted">
-              {{ article_preview }}{% if truncated %} &hellip; <span class="badge bg-secondary">truncated</span>{% endif %}
-            </p>
-            {% endif %}
-
-            <p class="mb-1 mt-3"><strong>Explanation:</strong></p>
-            <p class="text-muted">{{ explanation }}</p>
-          </div>
-
-          <div class="alert alert-warning text-start mt-4 mb-0">
-            <i class="bi bi-info-circle"></i>
-            This prediction is generated automatically by a machine-learning model and
-            should not replace professional fact-checking or verification from reliable sources.
-          </div>
-
+          </h2>
         </div>
       </div>
 
-      <div class="text-center mt-4">
-        <a href="{{ url_for('index') }}#detect" class="btn btn-primary btn-lg px-4">
-          <i class="bi bi-arrow-repeat"></i> Check Another Article
-        </a>
-      </div>
+      <p class="verdict-summary">{{ explanation }}</p>
 
-      {% if stats %}
-      <div class="row g-3 mt-4 text-center">
-        <div class="col-4">
-          <div class="mini-stat"><div class="mini-stat-value">{{ stats.total }}</div><div class="mini-stat-label">Total Checked</div></div>
+      {% if confidence is not none %}
+      <div class="meter">
+        <div class="meter-head">
+          <span>Confidence of the predicted class</span>
+          <span class="meter-value">{{ confidence }}%</span>
         </div>
-        <div class="col-4">
-          <div class="mini-stat"><div class="mini-stat-value text-success">{{ stats.real }}</div><div class="mini-stat-label">Real</div></div>
+        <div class="meter-track" role="progressbar" aria-label="Model confidence"
+             aria-valuenow="{{ confidence }}" aria-valuemin="0" aria-valuemax="100">
+          <div class="meter-fill" style="width: {{ confidence }}%;"></div>
         </div>
-        <div class="col-4">
-          <div class="mini-stat"><div class="mini-stat-value text-danger">{{ stats.fake }}</div><div class="mini-stat-label">Fake</div></div>
-        </div>
+        <p class="meter-note">
+          This is the probability the classifier assigned to the
+          <strong>{{ label }}</strong> class, not a measure of whether the story is true.
+        </p>
+      </div>
+      {% else %}
+      <div class="meter">
+        <p class="meter-note">
+          No confidence score is available for this prediction — the model did not return
+          usable class probabilities, and no value has been invented to fill the gap.
+        </p>
+      </div>
+      {% endif %}
+    </article>
+
+    {# ---------------- Submitted text ---------------- #}
+    <section class="result-section reveal" aria-labelledby="submittedHead">
+      <h2 id="submittedHead">Submitted text</h2>
+
+      {% if headline %}
+      <div class="result-block">
+        <strong>Headline</strong><br>
+        {{ headline }}
       </div>
       {% endif %}
 
+      {% if article_preview %}
+      <div class="result-block">
+        <strong>Article{% if truncated %} (preview){% endif %}</strong><br>
+        {{ article_preview }}{% if truncated %} &hellip;
+        <span class="badge" style="margin-left:.35rem;">truncated for display</span>{% endif %}
+      </div>
+      {% endif %}
+
+      {% if not headline and not article_preview %}
+      <div class="result-block">No text was echoed back for this prediction.</div>
+      {% endif %}
+    </section>
+
+    {# ---------------- Explanation ---------------- #}
+    <section class="result-section reveal" aria-labelledby="explainHead">
+      <h2 id="explainHead">What this means</h2>
+      <div class="result-block">
+        {{ explanation }}
+        The classifier compares your text with the statistical patterns it learned from the
+        training dataset — it does not search the web, read the source, or confirm any claim
+        against independent reporting.
+      </div>
+    </section>
+
+    {# ---------------- Disclaimer ---------------- #}
+    <div class="alert alert-warning reveal" role="note" style="margin-top:1.75rem;">
+      <svg class="icon" aria-hidden="true"><use href="#i-alert"></use></svg>
+      <div>
+        <strong>Read this before sharing:</strong> this prediction is generated automatically by a
+        machine-learning model and may be wrong. It is not a substitute for professional
+        fact-checking or verification from reliable sources.
+      </div>
     </div>
-  </div>
-</main>
 
-<footer class="app-footer text-center">
-  <div class="container">
-    <p class="mb-0 small text-muted">Automated ML classification only. Not a substitute for professional fact-checking.</p>
-  </div>
-</footer>
+    {# ---------------- Actions ---------------- #}
+    <div class="form-actions reveal" style="margin-top:1.75rem;">
+      <a class="btn btn-primary btn-lg" href="{{ url_for('detect') }}">
+        <svg class="icon" aria-hidden="true"><use href="#i-scan"></use></svg>
+        Analyze another article
+      </a>
+      <a class="btn btn-secondary btn-lg" href="{{ url_for('index') }}">
+        Back to home
+      </a>
+    </div>
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-</body>
-</html>
+    {# ---------------- Session stats ---------------- #}
+    {% if stats %}
+    <section class="result-section reveal" aria-labelledby="statsHead">
+      <h2 id="statsHead">Your session so far</h2>
+      <div class="mini-stats" style="margin-top:0;">
+        <div class="mini-stat">
+          <div class="mini-stat-value">{{ stats.total }}</div>
+          <div class="mini-stat-label">Total checked</div>
+        </div>
+        <div class="mini-stat is-real">
+          <div class="mini-stat-value">{{ stats.real }}</div>
+          <div class="mini-stat-label">Labelled REAL</div>
+        </div>
+        <div class="mini-stat is-fake">
+          <div class="mini-stat-value">{{ stats.fake }}</div>
+          <div class="mini-stat-label">Labelled FAKE</div>
+        </div>
+      </div>
+      <p class="meter-note">Counters belong to this browser session and reset when it ends.</p>
+    </section>
+    {% endif %}
+
+  </div>
+</section>
+
+{% endblock %}
