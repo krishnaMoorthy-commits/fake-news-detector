@@ -142,6 +142,26 @@
   <symbol id="i-bolt" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
     <path d="M13.2 2.8 5 13.4h6.2L10.8 21.2 19 10.6h-6.2l.4-7.8Z"/>
   </symbol>
+  <symbol id="i-mic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M12 3.4a2.7 2.7 0 0 1 2.7 2.7v5.6a2.7 2.7 0 1 1-5.4 0V6.1A2.7 2.7 0 0 1 12 3.4Z"/>
+    <path d="M5.6 11.2a6.4 6.4 0 0 0 12.8 0"/><path d="M12 17.6V21"/><path d="M8.6 21h6.8"/>
+  </symbol>
+  <symbol id="i-play" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M8.4 5.6v12.8L18.4 12Z"/>
+  </symbol>
+  <symbol id="i-pause" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M9.4 5.6v12.8"/><path d="M14.6 5.6v12.8"/>
+  </symbol>
+  <symbol id="i-stop" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="6.4" y="6.4" width="11.2" height="11.2" rx="2.2"/>
+  </symbol>
+  <symbol id="i-volume" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M11.4 5.4 6.9 9.2H4.3v5.6h2.6l4.5 3.8Z"/>
+    <path d="M15.3 9.5a3.5 3.5 0 0 1 0 5"/><path d="M17.8 7.1a7 7 0 0 1 0 9.8"/>
+  </symbol>
+  <symbol id="i-refresh" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M19.4 12a7.4 7.4 0 1 1-2.3-5.3"/><path d="M19.6 4.9v4.3h-4.3"/>
+  </symbol>
 </svg>
 
 {# ------------------------------------------------------------------ #}
@@ -264,7 +284,93 @@
   </div>
 </footer>
 
+{# ------------------------------------------------------------------ #}
+{# Floating AI voice assistant (Web Speech API, rule-based replies)    #}
+{# Hidden on /assistant, which already hosts the full chat interface.  #}
+{# ------------------------------------------------------------------ #}
+{% if active_page not in ('assistant', 'assistant_ask') %}
+<div class="va" id="voiceAssistant"
+     data-ask-url="{{ url_for('assistant_ask') }}"
+     data-history-url="{{ url_for('assistant_history') }}"
+     data-clear-url="{{ url_for('assistant_clear') }}">
+  <button type="button" class="va-fab" id="vaFab" aria-expanded="false" aria-controls="vaPanel">
+    <svg class="icon" aria-hidden="true"><use href="#i-spark"></use></svg>
+    <span class="sr-only">Open the AI voice assistant</span>
+    <span class="va-fab-ring" aria-hidden="true"></span>
+  </button>
+
+  <section class="va-panel" id="vaPanel" role="dialog" aria-labelledby="vaTitle" hidden>
+    <header class="va-head">
+      <span class="chat-avatar" aria-hidden="true"><svg class="icon"><use href="#i-spark"></use></svg></span>
+      <div class="va-head-text">
+        <h2 id="vaTitle">Voice Assistant</h2>
+        <p class="chat-status">
+          <span class="pulse-dot" aria-hidden="true"></span>
+          <span id="vaStatus">Rule-based &mdash; no external AI API</span>
+        </p>
+      </div>
+      <div class="va-head-actions">
+        <label class="sr-only" for="vaLang">Assistant language</label>
+        <select class="select" id="vaLang" data-voice-lang title="Assistant language">
+          {% for lang in voice_languages %}
+          <option value="{{ lang.code }}">{{ lang.short }}</option>
+          {% endfor %}
+        </select>
+        <button type="button" class="icon-btn" id="vaClear" title="Clear conversation">
+          <svg class="icon" aria-hidden="true"><use href="#i-refresh"></use></svg>
+          <span class="sr-only">Clear conversation</span>
+        </button>
+        <button type="button" class="icon-btn" id="vaClose" title="Close assistant">
+          <svg class="icon" aria-hidden="true"><use href="#i-close"></use></svg>
+          <span class="sr-only">Close assistant</span>
+        </button>
+      </div>
+    </header>
+
+    <div class="chat-messages va-messages" id="vaMessages" role="log" aria-live="polite"
+         aria-relevant="additions" tabindex="0">
+      <div class="chat-msg bot" id="vaIntro">
+        <span class="msg-avatar" aria-hidden="true"><svg class="icon"><use href="#i-spark"></use></svg></span>
+        <div class="msg-bubble">
+          <p>Hi! Ask me how the detection model works, what a label or confidence score means, or what I can tell you about your last analysis &mdash; type or tap the microphone.</p>
+          <p class="msg-limitation">I answer from written rules in this application. I cannot browse the web and never claim to have independently verified a news story.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="va-tools">
+      <button type="button" class="chip-btn" id="vaSpeakToggle" aria-pressed="false">
+        <svg class="icon" aria-hidden="true"><use href="#i-volume"></use></svg>
+        Speak replies
+      </button>
+      <span class="field-hint" id="vaVoiceNote"></span>
+    </div>
+
+    <form class="chat-form va-form" id="vaForm" action="{{ url_for('assistant_ask') }}">
+      <div class="alert-stack" id="vaErrors" role="alert" hidden></div>
+      <div class="va-input-row">
+        <label class="sr-only" for="vaInput">Your message</label>
+        <textarea class="textarea chat-input" id="vaInput" name="message" rows="1" maxlength="6000"
+                  placeholder="Ask a question&hellip;" aria-describedby="vaHint"></textarea>
+        <div class="va-input-actions">
+          <button type="button" class="va-mic" id="vaMic" aria-pressed="false">
+            <svg class="icon" aria-hidden="true"><use href="#i-mic"></use></svg>
+            <span class="sr-only">Speak your question</span>
+          </button>
+          <button type="submit" class="btn btn-primary" id="vaSend">
+            <svg class="icon" aria-hidden="true"><use href="#i-arrow-right"></use></svg>
+            <span class="sr-only">Send message</span>
+          </button>
+        </div>
+      </div>
+      <p class="field-hint" id="vaHint">Enter sends &middot; replies come from this server only &middot; nothing is sent to an external AI service</p>
+    </form>
+  </section>
+</div>
+{% endif %}
+
 <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+<script src="{{ url_for('static', filename='js/voice.js') }}"></script>
 {% block scripts %}{% endblock %}
 </body>
 </html>

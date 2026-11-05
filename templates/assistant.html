@@ -39,6 +39,16 @@
             {{ assistant_notice }}
           </p>
         </div>
+
+        {# Voice language for speech input and spoken replies (Web Speech API). #}
+        <div class="chat-head-actions">
+          <label class="field-label" for="chatLang">Language</label>
+          <select class="select" id="chatLang" data-voice-lang title="Assistant language">
+            {% for lang in voice_languages %}
+            <option value="{{ lang.code }}">{{ lang.label }}</option>
+            {% endfor %}
+          </select>
+        </div>
       </header>
 
       <div class="chat-messages" id="chatMessages" role="log" aria-live="polite"
@@ -83,17 +93,42 @@
                   aria-describedby="chatHint"></textarea>
         <div class="chat-form-actions">
           <p class="field-hint" id="chatHint">Enter sends &middot; Shift+Enter adds a line &middot; 6,000 character limit</p>
-          <button type="submit" class="btn btn-primary" id="chatSendBtn">
-            <span class="btn-text">
-              Send
-              <svg class="icon icon-arrow" aria-hidden="true"><use href="#i-arrow-right"></use></svg>
-            </span>
-            <span class="btn-loading">
-              <span class="spinner" aria-hidden="true"></span>
-              Thinking&hellip;
-            </span>
-          </button>
+          <div class="chat-actions-right">
+            {# Optional spoken replies — real SpeechSynthesis, off by default. #}
+            <button type="button" class="chip-btn" id="chatSpeakToggle" aria-pressed="false">
+              <svg class="icon" aria-hidden="true"><use href="#i-volume"></use></svg>
+              Speak replies
+            </button>
+
+            {# Speak the question instead of typing it (Web Speech API). #}
+            <button type="button" class="chat-mic" id="chatMic" aria-pressed="false"
+                    aria-describedby="chatVoiceStatus">
+              <svg class="icon" aria-hidden="true"><use href="#i-mic"></use></svg>
+              <span class="sr-only">Speak your question</span>
+            </button>
+
+            <button type="submit" class="btn btn-primary" id="chatSendBtn">
+              <span class="btn-text">
+                Send
+                <svg class="icon icon-arrow" aria-hidden="true"><use href="#i-arrow-right"></use></svg>
+              </span>
+              <span class="btn-loading">
+                <span class="spinner" aria-hidden="true"></span>
+                Thinking&hellip;
+              </span>
+            </button>
+          </div>
         </div>
+
+        {# Voice availability and recording status — never claims a language
+           works when the browser does not support it. #}
+        <div class="chat-voice-row">
+          <p class="field-hint" id="chatVoiceNote"></p>
+          <p class="field-hint" id="chatVoiceStatus" role="status" aria-live="polite"></p>
+        </div>
+
+        <div class="alert-stack" id="chatVoiceErrors" role="alert" hidden></div>
+
         <div class="alert-stack" id="chatErrors" role="alert"{% if not initial_error %} hidden{% endif %}>
           {% if initial_error %}
           <div class="alert alert-error" role="alert">

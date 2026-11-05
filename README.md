@@ -39,6 +39,27 @@ prediction.
   (`assistant.py`) — explains the pipeline and real predictions, scans pasted
   text for sensationalist wording (heuristics), gives fact-checking advice,
   and states its limitations. No external AI API is used or claimed
+- **Voice intelligence (browser Web Speech API only — no API keys, no external
+  services):**
+  - *Voice input dock* on `/detect`: speech is transcribed live and editable
+    into the real headline/article field you choose before you submit it
+  - *Floating voice assistant* (every page except `/assistant`, which already
+    hosts the full chat): typed or spoken questions, rule-based replies read
+    aloud on request, session conversation history with a clear button
+  - *Voice on the full chat page* (`/assistant`): microphone input for
+    questions, its own language picker, an optional "Speak replies" toggle
+    that reads new answers aloud, and live availability/recording status
+  - *"Listen to results"* player on the result page: reads the actual
+    rendered label, confidence and explanation, with play / pause / resume /
+    stop, voice speed and installed-voice selection
+  - `en-IN` / `ta-IN` / `hi-IN` language choice shared by every control;
+    unsupported browsers, blocked microphones, missing voices and unsupported
+    languages are reported with honest, specific messages instead of failing
+    silently. Animations respect `prefers-reduced-motion`
+- Honest language limitation: preprocessing keeps only the English letters
+  `a–z`, so Tamil or Hindi (Devanagari) input triggers a visible "Language
+  limitation" warning on the result page rather than a silently meaningless
+  score — the app never claims to translate text
 - Server-side text preprocessing (lowercasing, HTML/URL/punctuation removal)
 - TF-IDF vectorization of submitted text
 - Logistic Regression classification (REAL / FAKE)
@@ -114,7 +135,8 @@ fake_news_detector/
     ├── css/
     │   └── style.css        <- design system (CSS variables, all sections, animations)
     ├── js/
-    │   └── script.js        <- nav, reveals, count-ups, workflow, upload, chat, feed
+    │   ├── script.js        <- nav, reveals, count-ups, workflow, upload, chat, feed
+    │   └── voice.js         <- Web Speech API: voice dock, voice assistant, TTS player
     └── img/
         └── favicon.svg
 ```
@@ -132,6 +154,8 @@ fake_news_detector/
 | `/feed` | GET | News feed — category filter (`?category=`) and search (`?q=`), demonstration content |
 | `/assistant` | GET | AI News Assistant chat interface |
 | `/assistant/ask` | POST | Assistant replies: JSON for the chat UI, HTML fallback without JavaScript |
+| `/assistant/history` | GET | Capped session conversation history (JSON) for the floating voice assistant |
+| `/assistant/clear` | POST | Clears the session conversation history (JSON) |
 | `/about` | GET | Project background, pipeline, limitations, model card |
 | `/healthz` | GET | Health probe for Render (JSON: `{"status": "ok", ...}`) |
 | anything else | — | `404.html` |
@@ -219,7 +243,7 @@ server-side validation, XSS escaping, and proof that the real
 python _test_app.py
 ```
 
-Latest run: **189/189 checks passed**, covering 11 sections:
+Latest run: **289/289 checks passed**, covering 12 sections:
 
 1. Python syntax checks
 2. Imports & app factory
@@ -239,12 +263,18 @@ Latest run: **189/189 checks passed**, covering 11 sections:
     length limits and the no-JavaScript HTML fallback
 11. Workflow visualization, upload wiring and design assets (7 real stages,
     CSS/JS initializers, reduced-motion support)
+12. Voice intelligence: `/assistant/history` + `/assistant/clear` session
+    flow, the voice dock / floating widget / TTS panel / full-page chat
+    voice controls markup, the honest Tamil & Hindi language warnings (and
+    their absence for English), the `voice.js` feature set (no `innerHTML`,
+    no API keys, reduced-motion) and the matching CSS
 
 Live HTTP checks against a running server: every page and static asset
 returns 200, `/predict` returns a real prediction with confidence, multipart
 uploads of TXT/PDF/DOCX return the result page with extracted text, an
-`.exe` upload is rejected, the assistant JSON endpoint answers, and an empty
-POST re-renders the form with an error.
+`.exe` upload is rejected, the assistant JSON endpoint answers, an empty
+POST re-renders the form with an error, and the voice endpoints
+(`/assistant/history`, `/assistant/clear`) round-trip a real session cookie.
 
 Responsive browser pass (headless Chrome via the DevTools protocol, driver
 kept outside the repository): 5 pages × 4 viewports
@@ -347,6 +377,15 @@ into the running application.
   model. It explains what it is programmed to explain and says so.
 - **Uploaded documents** are parsed in memory and discarded; extracted text
   beyond 10,000 characters is not analyzed.
+- **Voice features** depend entirely on the browser: speech recognition
+  requires Chrome/Edge (Web Speech API) and, in most browsers, an internet
+  connection to the vendor's recognition service; speech synthesis uses only
+  the voices installed on the device. When a feature, language or voice is
+  unavailable the interface says so plainly instead of pretending it worked.
+- **Model language:** the classifier was trained on English news and
+  preprocessing discards every character outside `a–z`, so Tamil and Hindi
+  input is neither translated nor meaningfully classified — the result page
+  warns about this rather than showing a confident-looking but empty result.
 
 ---
 

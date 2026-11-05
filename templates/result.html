@@ -80,6 +80,81 @@
       {% endif %}
     </article>
 
+    {% if language_warning %}
+    <div class="alert alert-warning reveal" role="alert" style="margin-top:1.25rem;">
+      <svg class="icon" aria-hidden="true"><use href="#i-alert"></use></svg>
+      <div><strong>Language limitation:</strong> {{ language_warning }}</div>
+    </div>
+    {% endif %}
+
+    {# ---------------- Text-to-speech results (Web Speech API) ---------------- #}
+    <section class="tts-panel reveal" id="ttsPanel" aria-labelledby="ttsHead">
+      <header class="vd-head">
+        <span class="vd-badge" aria-hidden="true">
+          <svg class="icon"><use href="#i-volume"></use></svg>
+        </span>
+        <div class="vd-head-text">
+          <h2 class="vd-title" id="ttsHead">Listen to results</h2>
+          <p class="field-hint">
+            Hear the label, the confidence score when one exists, and the explanation read
+            aloud by your browser's speech synthesis.
+          </p>
+        </div>
+        <div class="vd-lang">
+          <label class="field-label" for="ttsLang">Language</label>
+          <select class="select" id="ttsLang" data-voice-lang>
+            {% for lang in voice_languages %}
+            <option value="{{ lang.code }}">{{ lang.label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </header>
+
+      <div class="tts-controls">
+        <button type="button" class="btn btn-primary" id="ttsPlay">
+          <svg class="icon" aria-hidden="true"><use href="#i-play"></use></svg>
+          Listen to results
+        </button>
+        <button type="button" class="btn btn-secondary" id="ttsPause" hidden>
+          <svg class="icon" aria-hidden="true"><use href="#i-pause"></use></svg>
+          Pause
+        </button>
+        <button type="button" class="btn btn-secondary" id="ttsResume" hidden>
+          <svg class="icon" aria-hidden="true"><use href="#i-play"></use></svg>
+          Resume
+        </button>
+        <button type="button" class="btn btn-ghost" id="ttsStop" hidden>
+          <svg class="icon" aria-hidden="true"><use href="#i-stop"></use></svg>
+          Stop
+        </button>
+      </div>
+
+      <div class="tts-options">
+        <div class="tts-option">
+          <label class="field-label" for="ttsRate">Voice speed</label>
+          <select class="select" id="ttsRate">
+            <option value="0.75">0.75&times; — Slow</option>
+            <option value="1" selected>1&times; — Normal</option>
+            <option value="1.25">1.25&times; — Fast</option>
+            <option value="1.5">1.5&times; — Faster</option>
+          </select>
+        </div>
+        <div class="tts-option tts-option-grow">
+          <label class="field-label" for="ttsVoice">Voice</label>
+          <select class="select" id="ttsVoice"></select>
+        </div>
+      </div>
+
+      <div class="tts-body">
+        <div class="waveform" id="ttsWave" aria-hidden="true"></div>
+        <p class="vd-status" id="ttsStatus" role="status" aria-live="polite">
+          Ready &mdash; press Listen to results.
+        </p>
+      </div>
+
+      <p class="field-hint" id="ttsNote"></p>
+    </section>
+
     {# ---------------- Submitted text ---------------- #}
     <section class="result-section reveal" aria-labelledby="submittedHead">
       <h2 id="submittedHead">Submitted text</h2>

@@ -589,6 +589,146 @@ check("JS honours prefers-reduced-motion", "prefers-reduced-motion" in js_src)
 
 print()
 print("=" * 78)
+print("12. VOICE INTELLIGENCE SYSTEM")
+print("=" * 78)
+
+# --- new backend routes ---------------------------------------------------
+for expected in ["/assistant/history", "/assistant/clear"]:
+    check(f"route exists: {expected}", expected in rules, f"got {sorted(rules)}")
+
+# --- session conversation history (floating assistant widget) -------------
+resp = client.post("/assistant/ask", json={"message": "How does the model work?"})
+check("assistant ask (JSON) -> 200", resp.status_code == 200, str(resp.status_code))
+reply_payload = resp.get_json()
+check("assistant ask returns a reply", bool(reply_payload and reply_payload.get("reply")))
+
+resp = client.get("/assistant/history")
+history = resp.get_json() or {}
+msgs = history.get("messages") or []
+check("GET /assistant/history -> 200", resp.status_code == 200, str(resp.status_code))
+check("history contains the user message",
+      any(m.get("role") == "user" and "model work" in m.get("text", "") for m in msgs), str(msgs))
+check("history contains the assistant reply",
+      any(m.get("role") == "assistant" and m.get("text") for m in msgs), str(msgs))
+check("history exposes a limit", history.get("limit") == 40, str(history.get("limit")))
+check("history never returns raw session internals",
+      "stats" not in history and "secret" not in str(history).lower(), str(history.keys()))
+
+resp = client.post("/assistant/clear")
+check("POST /assistant/clear -> 200", resp.status_code == 200, str(resp.status_code))
+cleared = resp.get_json() or {}
+check("clear empties the history", cleared.get("ok") is True and cleared.get("messages") == [], str(cleared))
+check("history is empty after clearing",
+      (client.get("/assistant/history").get_json() or {}).get("messages") == [])
+
+# --- voice dock on /detect ------------------------------------------------
+detect_voice = client.get("/detect").get_data(as_text=True)
+for marker in ['id="voiceDock"', 'id="vdMic"', 'id="vdStart"', 'id="vdStop"',
+               'id="vdClear"', 'id="vdWave"', 'id="vdStatus"', 'id="vdErrors"',
+               'data-vd-target="headline"', 'data-vd-target="article"',
+               'value="en-IN"', 'value="ta-IN"', 'value="hi-IN"']:
+    check(f"detect voice dock: {marker}", marker in detect_voice, "marker missing")
+check("detect dock explains the English-only model",
+      "Model language: English" in detect_voice and "not" in detect_voice, "")
+check("voice dock sits inside the real prediction form page",
+      'action="/predict"' in detect_voice and 'id="voiceDock"' in detect_voice, "")
+check("voice.js is loaded on /detect", "js/voice.js" in detect_voice, "")
+
+# --- floating assistant widget -------------------------------------------
+widget_marker = 'id="voiceAssistant"'
+check("widget present on home page", widget_marker in home, "")
+check("widget wired to real endpoints",
+      'data-ask-url="/assistant/ask"' in home and 'data-history-url="/assistant/history"' in home
+      and 'data-clear-url="/assistant/clear"' in home, "")
+assistant_now = client.get("/assistant").get_data(as_text=True)
+check("widget hidden on the full assistant page",
+      widget_marker not in assistant_now, "widget should not duplicate the full chat")
+check("widget has mic + clear + speak controls",
+      all(m in home for m in ['id="vaMic"', 'id="vaClear"', 'id="vaSpeakToggle"',
+                               'id="vaLang"', 'id="vaForm"']), "")
+
+# --- text-to-speech result panel -----------------------------------------
+resp = client.post("/predict", data={
+    "headline": "Council approves riverside park budget",
+    "article": "The council voted on Tuesday to approve funding for a riverside park.",
+})
+result_page = resp.get_data(as_text=True)
+check("/predict renders the result page", resp.status_code == 200, str(resp.status_code))
+for marker in ['id="ttsPanel"', 'id="ttsPlay"', 'id="ttsPause"', 'id="ttsResume"',
+               'id="ttsStop"', 'id="ttsRate"', 'id="ttsVoice"', 'id="ttsWave"',
+               'id="ttsStatus"', 'value="0.75"', 'value="1.5"']:
+    check(f"tts panel: {marker}", marker in result_page, "marker missing")
+check("tts panel offers the three voice languages",
+      all(v in result_page for v in ['value="en-IN"', 'value="ta-IN"', 'value="hi-IN"']), "")
+
+# --- honest language warning for non-English input -----------------------
+resp = client.post("/predict", data={"headline": "", "article": "செய்தி தலைப்பு ஒரு சோதனை"})
+tamil_page = resp.get_data(as_text=True)
+check("Tamil input triggers the language limitation warning",
+      "Language limitation" in tamil_page and "does not translate" in tamil_page, "")
+resp = client.post("/predict", data={"headline": "", "article": "यह एक परीक्षण समाचार है।"})
+hindi_page = resp.get_data(as_text=True)
+check("Hindi input triggers the language limitation warning",
+      "Language limitation" in hindi_page, "")
+resp = client.post("/predict", data={"headline": "Normal English headline",
+                                     "article": "An ordinary English article body."})
+english_page = resp.get_data(as_text=True)
+check("English input has no language warning",
+      "Language limitation" not in english_page, "false positive warning")
+
+# --- voice assets ---------------------------------------------------------
+voice_js = (BASE / "static" / "js" / "voice.js").read_text(encoding="utf-8")
+for fn in ["initVoiceDock", "initAssistantWidget", "initTtsPlayer", "initLanguage",
+           "createRecognitionSession", "speakText", "stopSpeech", "createWave",
+           "recognitionMessage", "voiceNote", "refreshVoices"]:
+    check(f"voice.js: {fn} implemented", f"function {fn}" in voice_js, "")
+check("voice.js uses SpeechRecognition with webkit fallback",
+      "window.SpeechRecognition || window.webkitSpeechRecognition" in voice_js)
+check("voice.js uses SpeechSynthesisUtterance", "SpeechSynthesisUtterance" in voice_js)
+check("voice.js uses the three required locales",
+      all(c in voice_js for c in ['"en-IN"', '"ta-IN"', '"hi-IN"']), "")
+check("voice.js honours prefers-reduced-motion", "prefers-reduced-motion" in voice_js)
+check("voice.js never injects raw HTML for transcripts",
+      not re.search(r"\.innerHTML\s*=", voice_js), "innerHTML assignment found — use textContent")
+check("voice.js contains no API keys or external services",
+      not re.search(r"api[_-]?key|Bearer |rapidapi|openai", voice_js, re.I), "possible secret/external API")
+check("voice.js stops previous speech before new playback",
+      voice_js.count("speechSynthesis.cancel()") >= 2, str(voice_js.count("speechSynthesis.cancel()")))
+
+for icon in ['id="i-mic"', 'id="i-play"', 'id="i-pause"', 'id="i-stop"',
+             'id="i-volume"', 'id="i-refresh"']:
+    check(f"icon sprite: {icon}", icon in home, "")
+
+css_check = (BASE / "static" / "css" / "style.css").read_text(encoding="utf-8")
+for cls in [".voice-dock", ".mic-btn", ".waveform", ".va-fab", ".va-panel",
+            ".tts-panel", ".select", "@keyframes mic-pulse", "@keyframes wave-bar"]:
+    check(f"CSS: {cls} present", cls in css_check, "")
+check("CSS: reduced-motion covers the voice animations",
+      css_check.count("prefers-reduced-motion") >= 3, str(css_check.count("prefers-reduced-motion")))
+
+# --- voice on the full /assistant chat page --------------------------------
+assistant_voice = client.get("/assistant").get_data(as_text=True)
+for marker in ['id="chatMic"', 'id="chatLang"', 'id="chatSpeakToggle"',
+               'id="chatVoiceNote"', 'id="chatVoiceStatus"', 'id="chatVoiceErrors"',
+               'value="en-IN"', 'value="ta-IN"', 'value="hi-IN"']:
+    check(f"assistant page voice control: {marker}", marker in assistant_voice, "marker missing")
+check("assistant page loads voice.js", "js/voice.js" in assistant_voice, "")
+check("voice.js: initAssistantPage implemented", "function initAssistantPage" in voice_js, "")
+check("voice.js boots the assistant page module",
+      "initAssistantPage();" in voice_js, "")
+for cls in [".chat-head-actions", ".chat-actions-right", ".chat-voice-row", ".chat-mic"]:
+    check(f"CSS: {cls} present", cls in css_check, "")
+
+# --- nothing broke in the original flow ----------------------------------
+resp = client.post("/predict", data={"headline": "Existing text detection still works",
+                                     "article": "This body must still reach the real model."})
+check("existing text prediction still works", resp.status_code == 200
+      and "Prediction result" in resp.get_data(as_text=True), str(resp.status_code))
+check("widget still hidden on assistant page after voice additions",
+      'id="voiceAssistant"' not in client.get("/assistant").get_data(as_text=True), "")
+
+print()
+print("=" * 78)
 print("SUMMARY")
 print("=" * 78)
 print(f"  passed: {len(PASS)}")

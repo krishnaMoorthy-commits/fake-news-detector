@@ -30,6 +30,89 @@
           At least one field is required. Submissions are validated on the server before the
           model runs.
         </p>
+
+        {# ---------------------------------------------------------------- #}
+        {# VOICE INPUT DOCK — real Web Speech API transcription into the form #}
+        {# ---------------------------------------------------------------- #}
+        <section class="voice-dock" id="voiceDock" aria-labelledby="vdTitle"
+                 data-ask-url="{{ url_for('predict') }}">
+          <header class="vd-head">
+            <span class="vd-badge" aria-hidden="true">
+              <svg class="icon"><use href="#i-mic"></use></svg>
+            </span>
+            <div class="vd-head-text">
+              <h3 class="vd-title" id="vdTitle">Voice input</h3>
+              <p class="field-hint">
+                Speak a headline or article. The transcript lands in the form below and stays
+                fully editable before you submit it.
+              </p>
+            </div>
+            <div class="vd-lang">
+              <label class="field-label" for="vdLang">Language</label>
+              <select class="select" id="vdLang" data-voice-lang>
+                {% for lang in voice_languages %}
+                <option value="{{ lang.code }}">{{ lang.label }}</option>
+                {% endfor %}
+              </select>
+            </div>
+          </header>
+
+          <div class="vd-stage">
+            <button type="button" class="mic-btn" id="vdMic" aria-pressed="false"
+                    aria-describedby="vdStatus">
+              <svg class="icon mic-btn-icon" aria-hidden="true"><use href="#i-mic"></use></svg>
+              <span class="mic-btn-ring" aria-hidden="true"></span>
+              <span class="sr-only">Toggle recording</span>
+            </button>
+
+            <div class="waveform" id="vdWave" aria-hidden="true"></div>
+
+            <p class="vd-status" id="vdStatus" role="status" aria-live="polite">
+              Ready &mdash; press Start recording and speak.
+            </p>
+          </div>
+
+          <div class="vd-actions">
+            <button type="button" class="btn btn-primary" id="vdStart">
+              <svg class="icon" aria-hidden="true"><use href="#i-mic"></use></svg>
+              Start recording
+            </button>
+            <button type="button" class="btn btn-secondary" id="vdStop" disabled>
+              <svg class="icon" aria-hidden="true"><use href="#i-stop"></use></svg>
+              Stop
+            </button>
+            <button type="button" class="btn btn-ghost" id="vdClear">
+              <svg class="icon" aria-hidden="true"><use href="#i-close"></use></svg>
+              Clear transcription
+            </button>
+          </div>
+
+          <div class="vd-target" role="group" aria-label="Transcript destination">
+            <span class="vd-target-label">Write transcript to:</span>
+            <button type="button" class="chip-btn" data-vd-target="headline"
+                    aria-pressed="false">Headline</button>
+            <button type="button" class="chip-btn is-active" data-vd-target="article"
+                    aria-pressed="true">Article</button>
+          </div>
+
+          <div class="alert-stack" id="vdErrors" role="alert" hidden></div>
+
+          <p class="field-hint" id="vdSupport">
+            Speech recognition runs entirely in your browser (Web Speech API) and needs
+            Chrome or Edge. Availability for each language depends on your browser.
+          </p>
+
+          <div class="alert alert-info" role="note">
+            <svg class="icon" aria-hidden="true"><use href="#i-info"></use></svg>
+            <div>
+              <strong>Model language: English.</strong> The classifier's preprocessing keeps
+              only the English letters a&ndash;z, so Tamil and Hindi text is <em>not</em>
+              translated automatically &mdash; predictions on untranslated non-English text
+              are unreliable and the result page will say so.
+            </div>
+          </div>
+        </section>
+
         {% include "partials/analyze_form.html" %}
       </div>
 

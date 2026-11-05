@@ -12,6 +12,8 @@ Routes:
     GET  /feed        -> news feed interface (clearly labelled demo content)
     GET  /assistant   -> AI News Assistant chat interface
     POST /assistant/ask -> rule-based assistant replies (JSON)
+    GET  /assistant/history -> session conversation history (JSON, voice widget)
+    POST /assistant/clear   -> clears the session conversation history (JSON)
     GET  /about       -> about page (including the model card)
     GET  /healthz     -> lightweight health check used by the hosting platform
     404 / 500         -> friendly error pages
@@ -64,6 +66,21 @@ logging.getLogger("pypdf").setLevel(logging.ERROR)
 # --- AI News Assistant -----------------------------------------------------
 ASSISTANT_MAX_MESSAGE = 6_000
 
+# Conversation history shown by the floating voice assistant. Session-scoped
+# (Flask signed cookie) and capped so a long chat can never bloat the cookie.
+ASSISTANT_HISTORY_LIMIT = 40
+
+# --- Voice intelligence ----------------------------------------------------
+# Speech recognition / synthesis locales offered by the UI. Availability of
+# any specific locale depends entirely on the browser and installed OS
+# voices; the front end detects this at runtime and reports it honestly
+# instead of pretending an unsupported language works.
+SUPPORTED_VOICE_LANGUAGES = (
+    {"code": "en-IN", "label": "English (India)", "short": "English"},
+    {"code": "ta-IN", "label": "Tamil (India)", "short": "Tamil"},
+    {"code": "hi-IN", "label": "Hindi (India)", "short": "Hindi"},
+)
+
 # Control characters that must never survive text extraction (newlines and
 # tabs are intentionally preserved).
 _CONTROL_CHARS_RE = re.compile(r"[\x00-\x08\x0b-\x1f\x7f]")
@@ -87,6 +104,81 @@ def update_stats(label: str) -> dict:
     session["stats"] = stats
     session.modified = True
     return stats
+
+
+# ---------------------------------------------------------------------------
+# Assistant conversation history (session-scoped, used by the voice widget)
+# ---------------------------------------------------------------------------
+def get_assistant_history() -> list[dict]:
+    """Return the current session's assistant chat history as a list."""
+    history = session.get("assistant_history")
+    if not isinstance(history, list):
+        return []
+    # Defensive filter: only well-formed, in-cap messages ever reach a client.
+    clean = []
+    for entry in history:
+        if not isinstance(entry, dict):
+            continue
+        role = entry.get("role")
+        text = entry.get("text")
+        if role in ("user", "assistant") and isinstance(text, str) and text:
+            clean.append({"role": role, "text": text[:ASSISTANT_MAX_MESSAGE]})
+    return clean
+
+
+def append_assistant_history(user_message: str, reply: str) -> None:
+    """Append one user/assistant exchange, trimming to the history cap."""
+    history = get_assistant_history()
+    history.append({"role": "user", "text": user_message[:ASSISTANT_MAX_MESSAGE]})
+    history.append({"role": "assistant", "text": reply[:ASSISTANT_MAX_MESSAGE]})
+    session["assistant_history"] = history[-ASSISTANT_HISTORY_LIMIT:]
+    session.modified = True
+
+
+# ---------------------------------------------------------------------------
+# Model language capability (English-only preprocessing — see model.py)
+# ---------------------------------------------------------------------------
+_DEVANAGARI_RE = re.compile("[\u0900-\u097F]")  # Hindi / Devanagari block
+_TAMIL_RE = re.compile("[\u0B80-\u0BFF]")  # Tamil block
+
+
+def script_language_warning(headline: str, article: str) -> str | None:
+    """
+    Honestly describe when a prediction cannot be trusted because of script.
+
+    model.preprocess_text() keeps only the ASCII letters a-z, so Tamil or
+    Hindi (Devanagari) characters are stripped before vectorization and an
+    English-only classifier would then score an effectively empty string.
+    This app never silently translates: instead we attach a clear warning so
+    the user knows the result below is unreliable for non-English text.
+    """
+    raw = f"{headline or ''} {article or ''}".strip()
+    if not raw:
+        return None
+
+    scripts = []
+    if _TAMIL_RE.search(raw):
+        scripts.append("Tamil")
+    if _DEVANAGARI_RE.search(raw):
+        scripts.append("Hindi (Devanagari)")
+    if scripts:
+        joined = " and ".join(scripts)
+        return (
+            f"This text contains {joined} script, but the model in this project "
+            "was trained on English news only: preprocessing keeps just the "
+            "English letters a–z, so these characters are removed before "
+            "classification. This application does not translate text, and the "
+            "prediction below is therefore unreliable for this input — submit "
+            "an English version of the article for a meaningful result."
+        )
+
+    if not ml.preprocess_text(raw):
+        return (
+            "After preprocessing, no English letters remained in this text, so "
+            "the classifier received an empty feature string. The prediction "
+            "below cannot be considered reliable."
+        )
+    return None
 
 
 def get_model_metrics() -> dict:
@@ -118,6 +210,8 @@ def inject_stats():
         # Drives the active indicator in the shared navigation bar.
         "active_page": request.endpoint or "",
         "current_year": date.today().year,
+        # Locales offered by every voice-language dropdown in the UI.
+        "voice_languages": SUPPORTED_VOICE_LANGUAGES,
     }
 
 
@@ -265,6 +359,9 @@ def run_prediction(headline: str, article: str, *, error_field: str = "error",
         explanation=explanation,
         stats=stats,
         source_note=source_note,
+        # Honest notice when the English-only preprocessing made the input
+        # unusable (Tamil/Hindi script or no ASCII letters left).
+        language_warning=script_language_warning(headline, article),
     )
 
 
@@ -464,6 +561,10 @@ def assistant_ask():
             initial_error="The assistant could not process that message. Please try again.",
         ), 500
 
+    # Remember the exchange for the floating voice assistant widget so chat
+    # history survives navigation within the same browser session.
+    append_assistant_history(message, result["reply"])
+
     if request.is_json:
         return jsonify(result)
 
@@ -476,6 +577,32 @@ def assistant_ask():
         initial_user=message,
         initial_reply=result["reply"],
     )
+
+
+@app.route("/assistant/history")
+def assistant_history():
+    """
+    Session conversation history for the floating voice assistant widget.
+
+    Returns only the capped, shape-checked messages produced by
+    append_assistant_history(); nothing user-supplied is echoed as HTML and
+    no other session data is exposed.
+    """
+    return jsonify(
+        {
+            "messages": get_assistant_history(),
+            "last_prediction": session.get("last_prediction"),
+            "limit": ASSISTANT_HISTORY_LIMIT,
+        }
+    )
+
+
+@app.route("/assistant/clear", methods=["POST"])
+def assistant_clear():
+    """Clear the current session's assistant conversation history."""
+    session.pop("assistant_history", None)
+    session.modified = True
+    return jsonify({"ok": True, "messages": []})
 
 
 @app.errorhandler(404)
