@@ -284,6 +284,18 @@ stage selection, feed live search, assistant chat round-trip) and a
 `prefers-reduced-motion` emulation run, with full-page screenshots reviewed
 at every breakpoint.
 
+Voice intelligence browser suite (same protocol, Chrome launched with a fake
+microphone device and a relaxed autoplay policy): **51/51 checks, 0 console
+errors, 0 failed requests** — capability detection, the voice dock recording
+cycle (start → listen → stop → cleanup), microphone denial messaging,
+transcribing into the real form fields and submitting them to `/predict`,
+the TTS player's play / pause / resume / stop states with its waveform and
+voice-speed options, language switching, assistant microphone input,
+typed and spoken assistant replies, widget open / clear / Escape, and
+horizontal-overflow checks at 390 px for `/`, `/detect` and `/assistant`.
+Speech *recognition accuracy* itself cannot be asserted headlessly — that
+still needs a human speaking into a real microphone.
+
 ---
 
 ## Deployment (Render, free tier)
