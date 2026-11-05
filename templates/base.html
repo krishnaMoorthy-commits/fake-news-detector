@@ -16,6 +16,18 @@
 <a class="skip-link" href="#main">Skip to main content</a>
 
 {# ------------------------------------------------------------------ #}
+{# Animated background: floating particles + drifting glow orbs        #}
+{# (decorative only — pointer-events:none, hidden from assistive tech) #}
+{# ------------------------------------------------------------------ #}
+<div class="bg-fx" aria-hidden="true">
+  <canvas class="bg-particles" id="bgParticles"></canvas>
+  <span class="bg-orb bg-orb-a"></span>
+  <span class="bg-orb bg-orb-b"></span>
+  <span class="bg-orb bg-orb-c"></span>
+  <span class="bg-grid"></span>
+</div>
+
+{# ------------------------------------------------------------------ #}
 {# Icon sprite: every icon used across the site is defined once here.  #}
 {# ------------------------------------------------------------------ #}
 <svg class="icon-sprite" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
@@ -100,6 +112,36 @@
     <path d="M9.5 20.3h5"/><path d="M10.3 22.6h3.4"/>
     <path d="M12 7.6a2.6 2.6 0 0 0-1.5 4.7c.4.3.6.7.6 1.2h1.8c0-.5.2-.9.6-1.2A2.6 2.6 0 0 0 12 7.6Z"/>
   </symbol>
+  <symbol id="i-news" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M18 5H5.8A1.8 1.8 0 0 0 4 6.8v11.4A1.8 1.8 0 0 0 5.8 20H18a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2Z"/>
+    <path d="M16 9H9"/><path d="M16 13H9"/><path d="M16 17H9"/><path d="M7 9h.01"/><path d="M7 13h.01"/><path d="M7 17h.01"/>
+  </symbol>
+  <symbol id="i-chat" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M20 12.2a7.4 7.4 0 0 1-8 7 8.6 8.6 0 0 1-2.6-.5L4.5 20.4l1.7-3.7A7 7 0 0 1 4 12.2a7.4 7.4 0 0 1 8-7 7.4 7.4 0 0 1 8 7Z"/>
+    <path d="M9 11.5h.01"/><path d="M12 11.5h.01"/><path d="M15 11.5h.01"/>
+  </symbol>
+  <symbol id="i-upload" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M12 16V4.8"/><path d="m7.6 9.2 4.4-4.4 4.4 4.4"/>
+    <path d="M4.5 15.4v2.8A1.8 1.8 0 0 0 6.3 20h11.4a1.8 1.8 0 0 0 1.8-1.8v-2.8"/>
+  </symbol>
+  <symbol id="i-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="11" cy="11" r="6.4"/><path d="m20 20-4.3-4.3"/>
+  </symbol>
+  <symbol id="i-spark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M12 3.5 13.7 9l5.5 1.7-5.5 1.7L12 18l-1.7-5.6L4.8 10.7 10.3 9 12 3.5Z"/>
+    <path d="M18.6 16.4 19.3 18.4l2 .7-2 .7-.7 2-.7-2-2-.7 2-.7.7-2Z"/>
+  </symbol>
+  <symbol id="i-globe" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="12" cy="12" r="8.6"/><path d="M3.6 12h16.8"/>
+    <path d="M12 3.4c2.2 2.4 3.3 5.3 3.3 8.6s-1.1 6.2-3.3 8.6c-2.2-2.4-3.3-5.3-3.3-8.6S9.8 5.8 12 3.4Z"/>
+  </symbol>
+  <symbol id="i-eye" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M2.6 12S6 5.8 12 5.8 21.4 12 21.4 12 18 18.2 12 18.2 2.6 12 2.6 12Z"/>
+    <circle cx="12" cy="12" r="3"/>
+  </symbol>
+  <symbol id="i-bolt" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M13.2 2.8 5 13.4h6.2L10.8 21.2 19 10.6h-6.2l.4-7.8Z"/>
+  </symbol>
 </svg>
 
 {# ------------------------------------------------------------------ #}
@@ -138,11 +180,13 @@
     <nav class="nav-menu" id="navMenu" aria-label="Primary">
       <ul class="nav-list">
         <li><a class="nav-link{% if active == 'index' %} is-active{% endif %}" href="{{ url_for('index') }}"{% if active == 'index' %} aria-current="page"{% endif %}>Home</a></li>
-        <li><a class="nav-link{% if active in ('detect', 'predict') %} is-active{% endif %}" href="{{ url_for('detect') }}"{% if active in ('detect', 'predict') %} aria-current="page"{% endif %}>Detect News</a></li>
+        <li><a class="nav-link{% if active in ('detect', 'predict', 'upload') %} is-active{% endif %}" href="{{ url_for('detect') }}"{% if active in ('detect', 'predict', 'upload') %} aria-current="page"{% endif %}>Detect News</a></li>
         <li><a class="nav-link" href="{{ url_for('index') }}#how-it-works">How It Works</a></li>
+        <li><a class="nav-link{% if active == 'feed' %} is-active{% endif %}" href="{{ url_for('feed') }}"{% if active == 'feed' %} aria-current="page"{% endif %}>News Feed</a></li>
+        <li><a class="nav-link{% if active in ('assistant', 'assistant_ask') %} is-active{% endif %}" href="{{ url_for('assistant') }}"{% if active in ('assistant', 'assistant_ask') %} aria-current="page"{% endif %}>AI Assistant</a></li>
         <li><a class="nav-link{% if active == 'about' %} is-active{% endif %}" href="{{ url_for('about') }}"{% if active == 'about' %} aria-current="page"{% endif %}>About Project</a></li>
       </ul>
-      <a class="btn btn-primary btn-sm nav-cta{% if active in ('detect', 'predict') %} is-active{% endif %}" href="{{ url_for('detect') }}">
+      <a class="btn btn-primary btn-sm nav-cta{% if active in ('detect', 'predict', 'upload') %} is-active{% endif %}" href="{{ url_for('detect') }}">
         Analyze News
         <svg class="icon" aria-hidden="true"><use href="#i-arrow-right"></use></svg>
       </a>
@@ -175,9 +219,9 @@
         </span>
       </a>
       <p class="footer-desc">
-        A college Data Science project that applies text preprocessing, TF-IDF features and a
-        trained classifier to explore how machine learning can flag text resembling patterns
-        found in misleading news.
+        A college Data Science project turned news-intelligence platform: text preprocessing,
+        TF-IDF features and a trained classifier — plus document upload, a demonstration news
+        feed and a rule-based assistant, all running in one Flask application.
       </p>
     </div>
 
@@ -187,6 +231,8 @@
         <li><a href="{{ url_for('index') }}">Home</a></li>
         <li><a href="{{ url_for('detect') }}">Detect News</a></li>
         <li><a href="{{ url_for('index') }}#how-it-works">How It Works</a></li>
+        <li><a href="{{ url_for('feed') }}">News Feed</a></li>
+        <li><a href="{{ url_for('assistant') }}">AI News Assistant</a></li>
         <li><a href="{{ url_for('about') }}">About Project</a></li>
       </ul>
     </nav>
@@ -197,6 +243,7 @@
         <li>Python &amp; Flask</li>
         <li>scikit-learn (TF-IDF + Logistic Regression)</li>
         <li>pandas &amp; NumPy</li>
+        <li>pypdf &amp; python-docx (document text extraction)</li>
         <li>joblib &amp; gunicorn</li>
         <li>HTML, CSS &amp; JavaScript</li>
       </ul>

@@ -84,6 +84,13 @@
     <section class="result-section reveal" aria-labelledby="submittedHead">
       <h2 id="submittedHead">Submitted text</h2>
 
+      {% if source_note %}
+      <div class="result-block">
+        <strong>Source</strong><br>
+        {{ source_note }}
+      </div>
+      {% endif %}
+
       {% if headline %}
       <div class="result-block">
         <strong>Headline</strong><br>

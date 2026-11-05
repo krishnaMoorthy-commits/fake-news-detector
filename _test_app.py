@@ -6,6 +6,10 @@ Run with:  python _test_app.py
 Everything below exercises the REAL Flask application object and the REAL
 machine-learning model — no mocking of prediction logic (the only patch is a
 counter wrapper around model.predict_news so we can prove it was invoked).
+
+Covers: page rendering, navigation integrity, the prediction workflow,
+document upload (TXT / PDF / DOCX plus failure modes), the news feed,
+the rule-based AI News Assistant, and template escaping.
 """
 
 import json
@@ -74,13 +78,17 @@ print("=" * 78)
 
 # --- routes declared ---
 rules = {str(r) for r in app_module.app.url_map.iter_rules()}
-for expected in ["/", "/detect", "/predict", "/about", "/healthz"]:
+for expected in ["/", "/detect", "/predict", "/about", "/healthz",
+                 "/upload", "/feed", "/assistant", "/assistant/ask"]:
     check(f"route exists: {expected}", expected in rules, f"got {sorted(rules)}")
 
 pages = [
-    ("/", 200, ["Think", "Before You Believe"]),
+    ("/", 200, ["Discover the Truth", "Behind Every Headline",
+                "AI-powered news intelligence", "Explore Platform"]),
     ("/detect", 200, ["Analyze a news article"]),
     ("/about", 200, ["Fake News Detection Using Data Science"]),
+    ("/feed", 200, ["Demonstration feed", "Trending in this demonstration feed"]),
+    ("/assistant", 200, ["News Intelligence Assistant", "rule-based"]),
     ("/definitely-not-a-page", 404, ["could not be found"]),
 ]
 
@@ -120,7 +128,8 @@ for name, body in [("home", home), ("detect", detect_page), ("about", about_page
           "cdn.jsdelivr.net" not in body and "fonts.googleapis" not in body)
 
 # Required navigation items present in the <nav> block of every page
-nav_items = ["Home", "Detect News", "How It Works", "About Project", "Analyze News"]
+nav_items = ["Home", "Detect News", "How It Works", "About Project", "Analyze News",
+             "News Feed", "AI Assistant"]
 for name, body in [("home", home), ("detect", detect_page), ("about", about_page)]:
     nav_match = re.search(r'<nav class="nav-menu".*?</nav>', body, re.S)
     nav_html = nav_match.group(0) if nav_match else ""
@@ -254,10 +263,329 @@ print()
 print("=" * 78)
 print("7. ESCAPING IN ALL USER-FACING TEMPLATES")
 print("=" * 78)
-for tpl in ["index.html", "detect.html", "result.html", "about.html", "404.html", "base.html"]:
+for tpl in ["index.html", "detect.html", "result.html", "about.html", "404.html",
+            "base.html", "feed.html", "assistant.html"]:
     src = (BASE / "templates" / tpl).read_text(encoding="utf-8")
     bad = re.findall(r"\{\{[^}]*\|\s*safe[^}]*\}\}", src)
     check(f"{tpl}: no |safe filter on user data", not bad, f"found {bad}")
+
+print()
+print("=" * 78)
+print("8. DOCUMENT UPLOAD (real TXT / PDF / DOCX parsing)")
+print("=" * 78)
+
+import tempfile
+
+import docx as docx_lib
+
+
+def make_pdf(text: str) -> bytes:
+    """Build a minimal, structurally valid single-page PDF for testing."""
+    objects = [
+        b"<< /Type /Catalog /Pages 2 0 R >>",
+        b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+        (b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] "
+         b"/Resources << /Font << /F1 5 0 R >> >> /Contents 4 0 R >>"),
+        None,  # content stream, built below
+        b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>",
+    ]
+    stream = f"BT /F1 24 Tf 72 700 Td ({text}) Tj ET".encode("latin-1")
+    objects[3] = (b"<< /Length " + str(len(stream)).encode() +
+                  b" >>\nstream\n" + stream + b"\nendstream")
+
+    out = bytearray(b"%PDF-1.4\n")
+    offsets = []
+    for index, obj in enumerate(objects, start=1):
+        offsets.append(len(out))
+        out += f"{index} 0 obj\n".encode() + obj + b"\nendobj\n"
+
+    xref_pos = len(out)
+    out += f"xref\n0 {len(objects) + 1}\n".encode()
+    out += b"0000000000 65535 f \n"
+    for off in offsets:
+        out += f"{off:010d} 00000 n \n".encode()
+    out += b"trailer\n"
+    out += f"<< /Size {len(objects) + 1} /Root 1 0 R >>\n".encode()
+    out += b"startxref\n" + str(xref_pos).encode() + b"\n%%EOF"
+    return bytes(out)
+
+
+def post_upload(filename, content):
+    """POST a file to /upload through the real multipart endpoint."""
+    from io import BytesIO
+    return client.post(
+        "/upload",
+        data={"document": (BytesIO(content), filename)},
+        content_type="multipart/form-data",
+    )
+
+
+with tempfile.TemporaryDirectory() as tmp:
+    tmp_path = Path(tmp)
+
+    # --- happy path: TXT -------------------------------------------------
+    txt_path = tmp_path / "sample.txt"
+    txt_path.write_text(
+        "City council approves budget for riverside park project. "
+        "The funding package covers walking paths and improved lighting.",
+        encoding="utf-8",
+    )
+    call_counter["n"] = 0
+    resp = client.post(
+        "/upload",
+        data={"document": (open(txt_path, "rb"), "sample.txt")},
+        content_type="multipart/form-data",
+    )
+    body = resp.get_data(as_text=True)
+    check("TXT upload -> 200", resp.status_code == 200, str(resp.status_code))
+    check("TXT upload reached the real model exactly once", call_counter["n"] == 1,
+          f"count={call_counter['n']}")
+    check("TXT result page rendered", "verdict-label" in body)
+    check("TXT source shown on result page", "Uploaded document: sample.txt" in body)
+    check("TXT extracted text analyzed", "riverside park project" in body)
+
+    # --- happy path: DOCX ------------------------------------------------
+    doc = docx_lib.Document()
+    doc.add_paragraph(
+        "DOCX extraction check: committee approves open data portal pilot "
+        "after public consultation."
+    )
+    docx_path = tmp_path / "sample.docx"
+    doc.save(str(docx_path))
+    call_counter["n"] = 0
+    resp = client.post(
+        "/upload",
+        data={"document": (open(docx_path, "rb"), "sample.docx")},
+        content_type="multipart/form-data",
+    )
+    body = resp.get_data(as_text=True)
+    check("DOCX upload -> 200", resp.status_code == 200, str(resp.status_code))
+    check("DOCX reached the real model", call_counter["n"] == 1,
+          f"count={call_counter['n']}")
+    check("DOCX text extracted", "open data portal pilot" in body)
+    check("DOCX source shown", "Uploaded document: sample.docx" in body)
+
+    # --- happy path: PDF -------------------------------------------------
+    pdf_bytes = make_pdf(
+        "PDF extraction check: laboratory publishes replication study results"
+    )
+    call_counter["n"] = 0
+    resp = post_upload("sample.pdf", pdf_bytes)
+    body = resp.get_data(as_text=True)
+    check("PDF upload -> 200", resp.status_code == 200, str(resp.status_code))
+    check("PDF reached the real model", call_counter["n"] == 1,
+          f"count={call_counter['n']}")
+    check("PDF text extracted", "replication study results" in body)
+
+    # --- failure modes ---------------------------------------------------
+    call_counter["n"] = 0
+    resp = post_upload("malware.exe", b"MZ\x90\x00 not a document")
+    body = resp.get_data(as_text=True)
+    check("unsupported extension rejected", "Unsupported file type" in body)
+    check("unsupported extension never reaches the model", call_counter["n"] == 0)
+
+    call_counter["n"] = 0
+    resp = post_upload("huge.txt", b"a" * (2 * 1024 * 1024 + 64))
+    body = resp.get_data(as_text=True)
+    check("oversized file rejected", "File is too large" in body)
+    check("oversized file never reaches the model", call_counter["n"] == 0)
+
+    call_counter["n"] = 0
+    resp = post_upload("empty.txt", b"")
+    body = resp.get_data(as_text=True)
+    check("empty file rejected", "The selected file is empty" in body)
+    check("empty file never reaches the model", call_counter["n"] == 0)
+
+    call_counter["n"] = 0
+    resp = post_upload("broken.pdf", b"%PDF-1.4\nthis is not really a pdf")
+    body = resp.get_data(as_text=True)
+    check("unreadable PDF rejected with friendly message",
+          "could not be read" in body)
+    check("unreadable PDF never reaches the model", call_counter["n"] == 0)
+
+    call_counter["n"] = 0
+    resp = client.post("/upload", data={}, content_type="multipart/form-data")
+    body = resp.get_data(as_text=True)
+    check("missing file rejected",
+          "Please choose a file to upload before analyzing." in body)
+    check("missing file never reaches the model", call_counter["n"] == 0)
+
+    # --- long document truncates to the model limit ----------------------
+    resp = post_upload("long.txt", ("The report describes a long committee "
+                                    "session. " * 600).encode("utf-8"))
+    body = resp.get_data(as_text=True)
+    check("long document truncated at 10,000 characters",
+          "first 10,000 characters analyzed" in body)
+
+print()
+print("=" * 78)
+print("9. NEWS FEED (demonstration content)")
+print("=" * 78)
+
+feed_page = client.get("/feed").get_data(as_text=True)
+check("feed shows the demonstration notice", "no news API is configured" in feed_page)
+check("feed renders article cards", feed_page.count('class="news-card reveal"') >= 8,
+      f"count={feed_page.count('class=\"news-card reveal\"')}")
+check("feed labels cards as demo", feed_page.count(">Demo<") >= 8)
+check("feed has a search bar", 'role="search"' in feed_page and 'name="q"' in feed_page)
+check("feed has category filters", 'Filter by category' in feed_page)
+check("feed marks trending entries", "Trending in this demonstration feed" in feed_page)
+
+health_page = client.get("/feed?category=Health").get_data(as_text=True)
+check("category filter keeps matching cards",
+      "hospital shares seasonal vaccination" in health_page)
+check("category filter hides other categories",
+      "budget hearing" not in health_page and "open data portal" not in health_page)
+
+search_page = client.get("/feed?q=portal").get_data(as_text=True)
+check("search finds matching article", "open data portal" in search_page)
+check("search hides non-matching article",
+      "vaccination advice" not in search_page)
+
+empty_page = client.get("/feed?category=NotACategory").get_data(as_text=True)
+check("unknown category renders empty state",
+      "No demonstration articles match" in empty_page)
+empty_page = client.get("/feed?q=zzz-no-such-article").get_data(as_text=True)
+check("no-match search renders empty state",
+      "No demonstration articles match" in empty_page)
+
+check("home has a Latest news section", 'id="latest-news"' in home)
+check("home latest-news cards are labelled demo", home.count(">Demo<") >= 3)
+
+print()
+print("=" * 78)
+print("10. AI NEWS ASSISTANT (rule-based, no external API)")
+print("=" * 78)
+
+assistant_page = client.get("/assistant").get_data(as_text=True)
+check("assistant page declares rule-based mode",
+      "external AI API is configured" in assistant_page)
+check("assistant page states limitations",
+      "never claims" in assistant_page or "proves anything true or false"
+      in assistant_page)
+check("assistant chat form wired", 'action="/assistant/ask"' in assistant_page)
+check("assistant textarea present", 'id="assistantInput"' in assistant_page)
+
+resp = client.post("/assistant/ask", json={"message": "How does the model work?"})
+data = json.loads(resp.get_data(as_text=True))
+check("assistant JSON question -> 200", resp.status_code == 200, str(resp.status_code))
+check("assistant identifies pipeline intent", data.get("intent") == "how-it-works",
+      str(data.get("intent")))
+check("assistant explains the real TF-IDF step", "TF-IDF" in data.get("reply", ""))
+check("assistant replies are marked rule-based", data.get("mode") == "rule-based")
+
+resp = client.post("/assistant/ask", json={"message": "Are you ChatGPT?"})
+data = json.loads(resp.get_data(as_text=True))
+check("assistant honestly denies being generative AI",
+      "not a generative AI" in data.get("reply", ""))
+
+resp = client.post("/assistant/ask",
+                   json={"message": "How do I check if a claim is credible?"})
+data = json.loads(resp.get_data(as_text=True))
+check("assistant gives credibility steps",
+      "original source" in data.get("reply", ""))
+
+resp = client.post("/assistant/ask", json={"message": "What are your limitations?"})
+data = json.loads(resp.get_data(as_text=True))
+limit_reply = data.get("reply", "")
+check("assistant states it cannot prove anything",
+      "prove anything true or false" in limit_reply)
+check("limitation reply carries the standing disclaimer",
+      "never treat" in limit_reply or "does not prove" in limit_reply)
+
+# Pasted article + explicit request -> real model run + heuristic scan
+sample_article = (
+    "Researchers at the coastal institute published a five year study on "
+    "estuary recovery this week. The paper reports measurable improvement in "
+    "three of four monitored zones and has been peer reviewed by two "
+    "independent teams. SHOCKING results you won't BELIEVE!!! Share this "
+    "before it gets deleted, because they don't want you to know the truth."
+)
+call_counter["n"] = 0
+resp = client.post("/assistant/ask",
+                   json={"message": "Please check this text: " + sample_article})
+data = json.loads(resp.get_data(as_text=True))
+reply = data.get("reply", "")
+check("assistant analysis used the real model", call_counter["n"] == 1,
+      f"count={call_counter['n']}")
+check("assistant analysis shows the predicted label",
+      "labelled that text" in reply)
+check("assistant analysis runs heuristic scans",
+      "Clickbait phrasing" in reply or "Urgency / suppression claims" in reply)
+check("assistant analysis repeats the limitation",
+      "does not browse the internet" in reply)
+check("assistant reply contains no HTML injection", "<script" not in reply)
+
+# Explain-my-prediction uses the real session result (from section 5)
+resp = client.post("/assistant/ask", json={"message": "Explain my last prediction"})
+data = json.loads(resp.get_data(as_text=True))
+explain_reply = data.get("reply", "")
+check("assistant references the real session prediction",
+      "Your most recent analysis in this session" in explain_reply)
+check("assistant explains what confidence means",
+      "not a probability that the story is true" in explain_reply or
+      "not a measure of whether the story is true" in explain_reply)
+
+# Empty and oversized messages
+resp = client.post("/assistant/ask", json={"message": "   "})
+check("empty assistant message -> 400", resp.status_code == 400, str(resp.status_code))
+resp = client.post("/assistant/ask", json={"message": "x" * 6001})
+check("oversized assistant message -> 400", resp.status_code == 400,
+      str(resp.status_code))
+
+# No-JavaScript fallback: a plain form POST renders the reply as HTML
+resp = client.post("/assistant/ask", data={"message": "What are your limitations?"})
+html = resp.get_data(as_text=True)
+check("assistant works without JavaScript", resp.status_code == 200 and
+      "prove anything true or false" in html, str(resp.status_code))
+
+# ...and user input echoed into that HTML must be escaped
+resp = client.post("/assistant/ask",
+                   data={"message": "limitations <script>alert(1)</script>"})
+html = resp.get_data(as_text=True)
+check("no-JS assistant echoes user input escaped",
+      "<script>alert" not in html and "&lt;script&gt;" in html)
+
+print()
+print("=" * 78)
+print("11. WORKFLOW VISUALIZATION, UPLOAD WIRING & DESIGN ASSETS")
+print("=" * 78)
+
+check("home has the workflow section", 'id="workflow"' in home)
+check("workflow has 7 stages", home.count('data-step="') == 7,
+      f"count={home.count('data-step=\"')}")
+check("workflow shows the real TF-IDF settings", "max_features=5000" in home)
+check("workflow shows the real classifier settings", "max_iter=1000" in home)
+check("workflow names the real cleaning function", "preprocess_text" in home)
+check("workflow shows honest confidence handling",
+      "never fabricated" in home or "no score is produced" in home)
+check("workflow states it does not fake predictions",
+      "does not submit text or fake a prediction" in home)
+
+check("upload form posts to /upload", 'action="/upload"' in detect_page)
+check("upload form is multipart",
+      'enctype="multipart/form-data"' in detect_page)
+check("file input accepts txt/pdf/docx", 'accept=".txt,.pdf,.docx' in detect_page)
+check("file input named document", 'name="document"' in detect_page)
+check("upload panel is on the detection page", 'id="upload"' in detect_page)
+
+check("assistant page rendered with chat", 'id="assistantForm"' in assistant_page)
+
+css_src = (BASE / "static" / "css" / "style.css").read_text(encoding="utf-8")
+check("CSS: glassmorphism present", "backdrop-filter" in css_src)
+check("CSS: animated background present", ".bg-orb" in css_src and ".bg-particles" in css_src)
+check("CSS: workflow styles present", ".wf-node" in css_src)
+check("CSS: upload styles present", ".dropzone" in css_src)
+check("CSS: feed styles present", ".news-card" in css_src)
+check("CSS: assistant styles present", ".chat-messages" in css_src)
+check("CSS: reduced-motion support for new animations",
+      css_src.count("prefers-reduced-motion") >= 2)
+
+js_src = (BASE / "static" / "js" / "script.js").read_text(encoding="utf-8")
+for fn in ["initParticles", "initCountUp", "initWorkflow",
+           "initUpload", "initFeed", "initAssistant"]:
+    check(f"JS: {fn} implemented", f"function {fn}" in js_src)
+check("JS honours prefers-reduced-motion", "prefers-reduced-motion" in js_src)
 
 print()
 print("=" * 78)

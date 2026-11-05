@@ -1,0 +1,165 @@
+{% extends "base.html" %}
+
+{% block title %}News Feed — News Intelligence Platform{% endblock %}
+{% block meta_description %}News feed interface with category filters and search. Demonstration content only — no news API is configured for this project.{% endblock %}
+
+{% block content %}
+<section class="page-hero">
+  <div class="container">
+    <ol class="breadcrumb">
+      <li><a href="{{ url_for('index') }}">Home</a></li>
+      <li aria-hidden="true"><svg class="icon"><use href="#i-arrow-right"></use></svg></li>
+      <li aria-current="page">News Feed</li>
+    </ol>
+    <p class="eyebrow">News feed</p>
+    <h1>Read, filter and search the feed</h1>
+    <p class="muted">
+      A modern feed interface with category filters, a search bar, trending entries and
+      expandable article cards. Because no news API is configured for this project, every
+      entry is clearly labelled demonstration content.
+    </p>
+  </div>
+</section>
+
+<section class="section">
+  <div class="container">
+
+    {# ---------------- Demonstration notice ---------------- #}
+    <div class="alert alert-warning reveal" role="note" id="feedNotice">
+      <svg class="icon" aria-hidden="true"><use href="#i-alert"></use></svg>
+      <div><strong>Demonstration content.</strong> {{ feed_notice }}</div>
+    </div>
+
+    {# ---------------- Controls: search + category filters ---------------- #}
+    <div class="feed-controls reveal">
+      <form class="feed-search" action="{{ url_for('feed') }}" method="GET" role="search"
+            aria-label="Search the news feed">
+        <label class="sr-only" for="feedQuery">Search articles</label>
+        <span class="feed-search-icon" aria-hidden="true">
+          <svg class="icon"><use href="#i-search"></use></svg>
+        </span>
+        <input class="input" type="search" id="feedQuery" name="q" value="{{ query }}"
+               placeholder="Search titles and summaries&hellip;" autocomplete="off">
+        <button class="btn btn-primary" type="submit">Search</button>
+      </form>
+
+      <nav class="filter-chips" aria-label="Filter by category">
+        <a class="chip-btn{% if not active_category %} is-active{% endif %}"
+           href="{{ url_for('feed') }}"
+           {% if not active_category %}aria-current="true"{% endif %}>All</a>
+        {% for name in categories %}
+        <a class="chip-btn{% if active_category == name %} is-active{% endif %}"
+           href="{{ url_for('feed', category=name, q=query) }}"
+           {% if active_category == name %}aria-current="true"{% endif %}>{{ name }}</a>
+        {% endfor %}
+      </nav>
+    </div>
+
+    <p class="feed-count" role="status" aria-live="polite">
+      Showing {{ articles|length }} of {{ total_articles }} demonstration
+      article{{ '' if articles|length == 1 else 's' }}
+      {% if active_category %}in <strong>{{ active_category }}</strong>{% endif %}
+      {% if query %}matching <strong>&ldquo;{{ query }}&rdquo;</strong>{% endif %}
+    </p>
+
+    {# ---------------- Article grid ---------------- #}
+    {% if articles %}
+    <div class="news-grid" id="feedGrid">
+      {% for article in articles %}
+      <article class="news-card reveal" data-delay="{{ loop.index0 % 3 }}"
+               data-category="{{ article.category }}"
+               data-title="{{ article.title }}">
+        <div class="news-card-top">
+          <span class="badge badge-accent">{{ article.category }}</span>
+          <span class="badge badge-warn">Demo</span>
+          {% if article.trending %}
+          <span class="badge badge-real">
+            <svg class="icon" aria-hidden="true"><use href="#i-pulse"></use></svg>
+            Trending
+          </span>
+          {% endif %}
+        </div>
+
+        <h2 class="news-title">{{ article.title }}</h2>
+        <p class="news-summary">{{ article.summary }}</p>
+
+        <p class="news-meta">
+          <span>
+            <svg class="icon" aria-hidden="true"><use href="#i-info"></use></svg>
+            {{ article.source }}
+          </span>
+          <span>
+            <svg class="icon" aria-hidden="true"><use href="#i-clock"></use></svg>
+            {{ article.date }}
+          </span>
+        </p>
+
+        <details class="news-details">
+          <summary class="news-more">
+            Read more
+            <svg class="icon" aria-hidden="true"><use href="#i-arrow-down"></use></svg>
+          </summary>
+          <div class="news-body">{{ article.body }}</div>
+        </details>
+      </article>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state reveal" id="feedEmpty">
+      <p class="empty-code">0</p>
+      <h2>No demonstration articles match</h2>
+      <p class="muted">
+        Try a different search term or clear the category filter to see all
+        {{ total_articles }} sample entries.
+      </p>
+      <div class="empty-actions">
+        <a class="btn btn-primary" href="{{ url_for('feed') }}">Show all articles</a>
+        {% if query %}
+        <a class="btn btn-secondary" href="{{ url_for('feed', category=active_category) }}">Clear search</a>
+        {% endif %}
+      </div>
+    </div>
+    {% endif %}
+
+    {# ---------------- Trending block ---------------- #}
+    {% if trending %}
+    <div class="feed-trending reveal">
+      <h2 class="feed-trending-title">
+        <svg class="icon" aria-hidden="true"><use href="#i-pulse"></use></svg>
+        Trending in this demonstration feed
+      </h2>
+      <p class="field-hint">
+        "Trending" here only means these sample entries are flagged in
+        <span class="mono">news_feed.py</span> — it is not measured reader activity.
+      </p>
+      <ol class="trending-list">
+        {% for article in trending %}
+        <li class="trending-item">
+          <span class="trending-rank" aria-hidden="true">{{ loop.index }}</span>
+          <span class="trending-body">
+            <span class="trending-cat">{{ article.category }}</span>
+            <span class="trending-title">{{ article.title }}</span>
+            <span class="news-meta">
+              <span><svg class="icon" aria-hidden="true"><use href="#i-info"></use></svg> {{ article.source }}</span>
+              <span><svg class="icon" aria-hidden="true"><use href="#i-clock"></use></svg> {{ article.date }}</span>
+            </span>
+          </span>
+        </li>
+        {% endfor %}
+      </ol>
+    </div>
+    {% endif %}
+
+    <div class="alert alert-info reveal" role="note" style="margin-top:2rem;">
+      <svg class="icon" aria-hidden="true"><use href="#i-info"></use></svg>
+      <div>
+        <strong>Want to analyze something?</strong>
+        Head back to the detection page to check a headline, an article body or an uploaded
+        document with the trained model —
+        <a href="{{ url_for('detect') }}">open the analysis form</a>.
+      </div>
+    </div>
+
+  </div>
+</section>
+{% endblock %}

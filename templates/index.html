@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 
-{% block title %}Fake News Detection — Think Before You Believe{% endblock %}
-{% block meta_description %}Analyze news articles with machine learning and natural language processing to explore patterns associated with potentially misleading information.{% endblock %}
+{% block title %}News Intelligence Platform — Discover the Truth Behind Every Headline{% endblock %}
+{% block meta_description %}AI-powered news intelligence: analyze news articles with machine learning, upload documents for analysis, explore the model workflow and read a clearly labelled demonstration news feed.{% endblock %}
 
 {% block content %}
 
@@ -12,22 +12,22 @@
   <div class="container hero-grid">
 
     <div class="hero-copy">
-      <p class="eyebrow">Fake News Detection &middot; Data Science Project</p>
+      <p class="eyebrow">News Intelligence Platform &middot; AI Analysis</p>
 
-      <h1 class="hero-title">Think <span class="text-accent">Before You Believe.</span></h1>
+      <h1 class="hero-title">Discover the Truth <span class="text-accent">Behind Every Headline</span></h1>
 
       <p class="hero-lead">
-        Analyze news articles with machine learning and natural language processing to explore
-        patterns associated with potentially misleading information.
+        AI-powered news intelligence to help identify potentially misleading information.
       </p>
 
       <div class="hero-actions">
-        <a class="btn btn-primary btn-lg" href="{{ url_for('detect') }}">
+        <a class="btn btn-primary btn-lg btn-glow" href="{{ url_for('detect') }}">
           Analyze News
           <svg class="icon icon-arrow" aria-hidden="true"><use href="#i-arrow-right"></use></svg>
         </a>
-        <a class="btn btn-secondary btn-lg" href="#how-it-works">
-          Explore How It Works
+        <a class="btn btn-secondary btn-lg" href="#about-platform">
+          Explore Platform
+          <svg class="icon" aria-hidden="true"><use href="#i-arrow-down"></use></svg>
         </a>
       </div>
 
@@ -43,6 +43,10 @@
         <li>
           <svg class="icon" aria-hidden="true"><use href="#i-pulse"></use></svg>
           Confidence score when available
+        </li>
+        <li>
+          <svg class="icon" aria-hidden="true"><use href="#i-upload"></use></svg>
+          TXT / PDF / DOCX upload
         </li>
       </ul>
     </div>
@@ -124,57 +128,93 @@
 </section>
 
 {# ------------------------------------------------------------------ #}
-{# TECHNOLOGY                                                          #}
+{# ABOUT THE PLATFORM                                                  #}
 {# ------------------------------------------------------------------ #}
-<section class="section section-alt" id="technology">
+<section class="section section-alt" id="about-platform">
   <div class="container">
     <div class="section-head center reveal">
-      <p class="eyebrow">Core technology</p>
-      <h2 class="section-title">Machine learning, applied to language</h2>
+      <p class="eyebrow">About the platform</p>
+      <h2 class="section-title">A news intelligence workspace built on a real model</h2>
       <p class="section-lead">
-        Everything described here reflects what the running application actually does —
-        no simulated AI and no invented capabilities.
+        This platform packages an end-to-end Data Science pipeline — cleaning, feature
+        extraction, classification — behind a modern interface: analyze typed text or
+        uploaded documents, watch how the model actually works, and read clearly labelled
+        demonstration content. Every number and label you see comes from the running code.
       </p>
     </div>
 
-    <div class="tech-list">
-      <article class="tech-item reveal">
-        <svg class="icon" aria-hidden="true"><use href="#i-cpu"></use></svg>
-        <h3>Machine Learning</h3>
+    <div class="glass-grid">
+      <article class="glass-card reveal">
+        <span class="glass-icon" aria-hidden="true"><svg class="icon"><use href="#i-cpu"></use></svg></span>
+        <h3>Trained, not simulated</h3>
         <p>
-          A Logistic Regression classifier trained with scikit-learn learns the statistical
-          patterns that separate the <strong>REAL</strong> and <strong>FAKE</strong> labels
-          present in the training dataset.
+          A Logistic Regression classifier fitted on your labelled dataset does the
+          classification. No random labels, no placeholder predictions.
         </p>
       </article>
 
-      <article class="tech-item reveal" data-delay="1">
-        <svg class="icon" aria-hidden="true"><use href="#i-text"></use></svg>
-        <h3>Natural Language Processing</h3>
+      <article class="glass-card reveal" data-delay="1">
+        <span class="glass-icon" aria-hidden="true"><svg class="icon"><use href="#i-doc"></use></svg></span>
+        <h3>Text in any common form</h3>
         <p>
-          Raw text is lowercased, stripped of HTML tags, URLs and punctuation, then collapsed
-          to clean whitespace before it ever reaches the model.
+          Paste a headline or article, or drop in a TXT, PDF or DOCX file — the server
+          extracts the text and runs it through the identical pipeline.
         </p>
       </article>
 
-      <article class="tech-item reveal" data-delay="2">
-        <svg class="icon" aria-hidden="true"><use href="#i-branch"></use></svg>
-        <h3>Text Classification</h3>
+      <article class="glass-card reveal" data-delay="2">
+        <span class="glass-icon" aria-hidden="true"><svg class="icon"><use href="#i-spark"></use></svg></span>
+        <h3>Transparent by design</h3>
         <p>
-          TF-IDF turns the cleaned text into numeric features, weighing each term by how
-          distinctive it is across the documents seen during training.
+          Confidence appears only when the model genuinely returns probabilities, the demo
+          feed is labelled as demo, and the assistant states that it is rule-based.
         </p>
       </article>
 
-      <article class="tech-item reveal" data-delay="3">
-        <svg class="icon" aria-hidden="true"><use href="#i-target"></use></svg>
-        <h3>Model-based Prediction</h3>
+      <article class="glass-card reveal" data-delay="3">
+        <span class="glass-icon" aria-hidden="true"><svg class="icon"><use href="#i-shield"></use></svg></span>
+        <h3>Your text stays here</h3>
         <p>
-          The saved vectorizer and classifier bundle is loaded once per process and reused to
-          label new, unseen text submitted through the form.
+          Analysis happens inside this Flask server. Nothing is sent to an external API,
+          and uploaded files are read in memory without being stored.
         </p>
       </article>
     </div>
+
+    {# --- Real numbers recorded at training time (never hard-coded) --- #}
+    {% if metrics %}
+    <div class="metric-band reveal" aria-label="Model evaluation metrics from the last training run">
+      <div class="metric-item">
+        <span class="metric-value" data-count="{{ metrics.accuracy }}" data-suffix="%">{{ metrics.accuracy }}%</span>
+        <span class="metric-label">Test accuracy</span>
+      </div>
+      <div class="metric-item">
+        <span class="metric-value" data-count="{{ metrics.precision }}" data-suffix="%">{{ metrics.precision }}%</span>
+        <span class="metric-label">Precision (FAKE)</span>
+      </div>
+      <div class="metric-item">
+        <span class="metric-value" data-count="{{ metrics.recall }}" data-suffix="%">{{ metrics.recall }}%</span>
+        <span class="metric-label">Recall (FAKE)</span>
+      </div>
+      <div class="metric-item">
+        <span class="metric-value" data-count="{{ metrics.f1_score }}" data-suffix="%">{{ metrics.f1_score }}%</span>
+        <span class="metric-label">F1 score (FAKE)</span>
+      </div>
+      <div class="metric-item">
+        <span class="metric-value" data-count="{{ metrics.train_size }}">{{ metrics.train_size }}</span>
+        <span class="metric-label">Training rows</span>
+      </div>
+      <div class="metric-item">
+        <span class="metric-value" data-count="{{ metrics.test_size }}">{{ metrics.test_size }}</span>
+        <span class="metric-label">Held-out test rows</span>
+      </div>
+    </div>
+    <p class="metric-note reveal">
+      Recorded by <span class="mono">train_model.py</span> during the last training run on a
+      held-out split of your own dataset — read at runtime from the model file, not typed
+      into this page.
+    </p>
+    {% endif %}
   </div>
 </section>
 
@@ -198,9 +238,9 @@
         </span>
         <h3>Enter a headline or article</h3>
         <p>
-          Paste a news headline, a full article body, or both into the analysis form.
-          Server-side validation confirms the text is present and within the 10,000-character
-          limit before anything is processed.
+          Paste a news headline, a full article body, or both into the analysis form — or
+          upload a TXT, PDF or DOCX document. Server-side validation confirms the text is
+          present and within the 10,000-character limit before anything is processed.
         </p>
       </article>
 
@@ -232,6 +272,375 @@
 </section>
 
 {# ------------------------------------------------------------------ #}
+{# AI WORKFLOW VISUALIZATION (reflects the real pipeline)              #}
+{# ------------------------------------------------------------------ #}
+<section class="section section-alt" id="workflow">
+  <div class="container">
+    <div class="section-head center reveal">
+      <p class="eyebrow">AI workflow visualization</p>
+      <h2 class="section-title">Inside the analysis pipeline</h2>
+      <p class="section-lead">
+        Seven interactive stages that mirror the real code path — the exact preprocessing,
+        vectorizer and classifier defined in <span class="mono">model.py</span> and
+        <span class="mono">train_model.py</span>. Select a stage to inspect it.
+      </p>
+    </div>
+
+    <div class="workflow reveal" id="workflowViz">
+      <div class="wf-progress" aria-hidden="true"><span class="wf-progress-fill" id="wfProgressFill"></span></div>
+
+      <ol class="wf-track" role="list" aria-label="Machine learning workflow stages">
+        <li class="wf-node-wrap">
+          <button type="button" class="wf-node is-active" data-step="0" aria-pressed="true">
+            <span class="wf-dot" aria-hidden="true"></span>
+            <span class="wf-num">01</span>
+            <svg class="icon" aria-hidden="true"><use href="#i-doc"></use></svg>
+            <span class="wf-name">Article input</span>
+          </button>
+        </li>
+        <li class="wf-node-wrap">
+          <button type="button" class="wf-node" data-step="1" aria-pressed="false">
+            <span class="wf-dot" aria-hidden="true"></span>
+            <span class="wf-num">02</span>
+            <svg class="icon" aria-hidden="true"><use href="#i-layers"></use></svg>
+            <span class="wf-name">Preprocessing</span>
+          </button>
+        </li>
+        <li class="wf-node-wrap">
+          <button type="button" class="wf-node" data-step="2" aria-pressed="false">
+            <span class="wf-dot" aria-hidden="true"></span>
+            <span class="wf-num">03</span>
+            <svg class="icon" aria-hidden="true"><use href="#i-scan"></use></svg>
+            <span class="wf-name">Text cleaning</span>
+          </button>
+        </li>
+        <li class="wf-node-wrap">
+          <button type="button" class="wf-node" data-step="3" aria-pressed="false">
+            <span class="wf-dot" aria-hidden="true"></span>
+            <span class="wf-num">04</span>
+            <svg class="icon" aria-hidden="true"><use href="#i-branch"></use></svg>
+            <span class="wf-name">Feature extraction</span>
+          </button>
+        </li>
+        <li class="wf-node-wrap">
+          <button type="button" class="wf-node" data-step="4" aria-pressed="false">
+            <span class="wf-dot" aria-hidden="true"></span>
+            <span class="wf-num">05</span>
+            <svg class="icon" aria-hidden="true"><use href="#i-cpu"></use></svg>
+            <span class="wf-name">Classification</span>
+          </button>
+        </li>
+        <li class="wf-node-wrap">
+          <button type="button" class="wf-node" data-step="5" aria-pressed="false">
+            <span class="wf-dot" aria-hidden="true"></span>
+            <span class="wf-num">06</span>
+            <svg class="icon" aria-hidden="true"><use href="#i-pulse"></use></svg>
+            <span class="wf-name">Prediction</span>
+          </button>
+        </li>
+        <li class="wf-node-wrap">
+          <button type="button" class="wf-node" data-step="6" aria-pressed="false">
+            <span class="wf-dot" aria-hidden="true"></span>
+            <span class="wf-num">07</span>
+            <svg class="icon" aria-hidden="true"><use href="#i-check-circle"></use></svg>
+            <span class="wf-name">Result shown</span>
+          </button>
+        </li>
+      </ol>
+
+      <div class="wf-panels">
+        <div class="wf-panel is-active" data-panel="0">
+          <h3>1 &middot; User enters a news article</h3>
+          <p>
+            A headline (up to 500 characters) and/or an article body (combined limit 10,000
+            characters) is submitted through the form — or extracted from an uploaded
+            TXT, PDF or DOCX file. Flask validates the input before the model is touched.
+          </p>
+          <pre class="wf-code mono">POST /predict   headline="..."  article="..."
+# or POST /upload  document=&lt;file&gt;  (text extracted in memory)</pre>
+        </div>
+
+        <div class="wf-panel" data-panel="1">
+          <h3>2 &middot; Text preprocessing</h3>
+          <p>
+            Headline and article are joined into one text blob. The same function is used at
+            training time and at prediction time, so the model always sees text prepared the
+            same way.
+          </p>
+          <pre class="wf-code mono">model.combine_headline_and_article(headline, article)
+# -&gt; "headline article body..."</pre>
+        </div>
+
+        <div class="wf-panel" data-panel="2">
+          <h3>3 &middot; Text cleaning</h3>
+          <p>
+            Lowercased, HTML tags stripped, URLs removed, punctuation and non-alphabetic
+            characters removed, whitespace collapsed. Dependency-free and identical to the
+            cleaning applied during training.
+          </p>
+          <pre class="wf-code mono">model.preprocess_text(text)
+# lowercase -&gt; strip &lt;tags&gt; -&gt; strip URLs
+# -&gt; strip punctuation/digits -&gt; collapse whitespace</pre>
+        </div>
+
+        <div class="wf-panel" data-panel="3">
+          <h3>4 &middot; Feature extraction</h3>
+          <p>
+            The TF-IDF vectorizer fitted during training converts the cleaned text into a
+            sparse numeric vector, weighing terms by how distinctive they are across the
+            training documents.
+          </p>
+          <pre class="wf-code mono">TfidfVectorizer(max_features=5000,
+                ngram_range=(1, 2),
+                min_df=2, stop_words="english")
+vectorizer.transform([cleaned])  # -&gt; feature matrix</pre>
+        </div>
+
+        <div class="wf-panel" data-panel="4">
+          <h3>5 &middot; Machine learning classification</h3>
+          <p>
+            The trained Logistic Regression classifier scores the feature vector and selects
+            one class. The classifier is loaded once per process and reused for every
+            request.
+          </p>
+          <pre class="wf-code mono">LogisticRegression(max_iter=1000, C=1.0)
+classifier.predict(features)  # -&gt; "REAL" | "FAKE"</pre>
+        </div>
+
+        <div class="wf-panel" data-panel="5">
+          <h3>6 &middot; Prediction generation</h3>
+          <p>
+            The label is normalized to REAL or FAKE. When the classifier exposes class
+            probabilities, the probability of the predicted class is reported as confidence;
+            when it does not, no score is produced rather than an invented one.
+          </p>
+          <pre class="wf-code mono">confidence = predict_proba(features)[predicted_class] * 100
+# None if unavailable — never fabricated</pre>
+        </div>
+
+        <div class="wf-panel" data-panel="6">
+          <h3>7 &middot; Result displayed to the user</h3>
+          <p>
+            The result page renders the label, the confidence meter (or an honest note when
+            no score exists), the submitted text, a plain-language explanation, the session
+            counters and the standing limitation disclaimer.
+          </p>
+          <pre class="wf-code mono">render_template("result.html", label=..., confidence=...,
+                explanation=..., stats=...)  # /predict</pre>
+        </div>
+      </div>
+
+      <div class="wf-controls">
+        <button type="button" class="btn btn-secondary" id="wfPlayBtn" aria-describedby="wfPlayHint">
+          <svg class="icon" aria-hidden="true"><use href="#i-pulse"></use></svg>
+          <span class="wf-play-label">Play pipeline</span>
+        </button>
+        <p class="field-hint" id="wfPlayHint">
+          Visual walkthrough only — it does not submit text or fake a prediction. Real
+          predictions run when you use the analysis form.
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+{# ------------------------------------------------------------------ #}
+{# AI CAPABILITIES                                                     #}
+{# ------------------------------------------------------------------ #}
+<section class="section" id="capabilities">
+  <div class="container">
+    <div class="section-head reveal">
+      <p class="eyebrow">AI capabilities</p>
+      <h2 class="section-title">What this platform actually does</h2>
+      <p class="section-lead">
+        Each capability below is implemented in the source code. Anything not listed here is
+        not part of the application.
+      </p>
+    </div>
+
+    <div class="cap-grid">
+      <article class="cap-card reveal">
+        <span class="cap-icon" aria-hidden="true"><svg class="icon"><use href="#i-cpu"></use></svg></span>
+        <h3>Machine-learning text classification</h3>
+        <p>A trained scikit-learn classifier labels submitted text as REAL or FAKE using
+           TF-IDF features built from your headline and article.</p>
+      </article>
+
+      <article class="cap-card reveal" data-delay="1">
+        <span class="cap-icon" aria-hidden="true"><svg class="icon"><use href="#i-upload"></use></svg></span>
+        <h3>Document upload analysis</h3>
+        <p>Drag-and-drop TXT, PDF and DOCX files (up to 2 MB). Text is extracted in memory,
+           validated and sent through the same prediction pipeline — never executed, never
+           stored.</p>
+      </article>
+
+      <article class="cap-card reveal" data-delay="2">
+        <span class="cap-icon" aria-hidden="true"><svg class="icon"><use href="#i-branch"></use></svg></span>
+        <h3>Interactive workflow visualization</h3>
+        <p>An animated seven-stage diagram of the real pipeline — input, preprocessing,
+           cleaning, TF-IDF features, classification, prediction and result.</p>
+      </article>
+
+      <article class="cap-card reveal">
+        <span class="cap-icon" aria-hidden="true"><svg class="icon"><use href="#i-pulse"></use></svg></span>
+        <h3>Confidence score</h3>
+        <p>When the classifier exposes class probabilities, the predicted class probability
+           is displayed as a percentage. If it cannot be computed, the score is omitted
+           rather than invented.</p>
+      </article>
+
+      <article class="cap-card reveal" data-delay="1">
+        <span class="cap-icon" aria-hidden="true"><svg class="icon"><use href="#i-news"></use></svg></span>
+        <h3>News feed interface</h3>
+        <p>Category filters, search and expandable cards. Because no news API is configured,
+           every entry is explicitly labelled demonstration content.</p>
+      </article>
+
+      <article class="cap-card reveal" data-delay="2">
+        <span class="cap-icon" aria-hidden="true"><svg class="icon"><use href="#i-chat"></use></svg></span>
+        <h3>AI News Assistant</h3>
+        <p>A chat interface backed by transparent, rule-based responses: it explains the
+           pipeline and predictions and shares fact-checking advice. It states its limits
+           up front.</p>
+      </article>
+
+      <article class="cap-card reveal">
+        <span class="cap-icon" aria-hidden="true"><svg class="icon"><use href="#i-clock"></use></svg></span>
+        <h3>Session prediction history</h3>
+        <p>Running totals for your current browser session — checked, real and fake — stored
+           in the Flask session cookie and shown in the snapshot below.</p>
+      </article>
+
+      <article class="cap-card reveal" data-delay="1">
+        <span class="cap-icon" aria-hidden="true"><svg class="icon"><use href="#i-shield"></use></svg></span>
+        <h3>Server-side validation &amp; graceful failures</h3>
+        <p>Empty and over-length input are rejected by Flask before the model runs; a
+           missing or unreadable model file produces instructions instead of a stack trace.</p>
+      </article>
+    </div>
+
+    <div class="alert alert-info feature-note reveal" role="note">
+      <svg class="icon" aria-hidden="true"><use href="#i-info"></use></svg>
+      <div>
+        <strong>Not included in this build:</strong> fact-checking against independent
+        sources, a generative AI chatbot, live news ingestion, per-word explainability,
+        author/date metadata analysis, and permanent storage of submitted text. These are
+        deliberately not advertised as working features.
+      </div>
+    </div>
+  </div>
+</section>
+
+{# ------------------------------------------------------------------ #}
+{# LATEST NEWS (demonstration content)                                 #}
+{# ------------------------------------------------------------------ #}
+<section class="section section-alt" id="latest-news">
+  <div class="container">
+    <div class="section-head center reveal">
+      <p class="eyebrow">Latest news</p>
+      <h2 class="section-title">From the news feed</h2>
+      <p class="section-lead">
+        No news API is configured for this project, so these are sample entries that
+        demonstrate the feed interface — clearly labelled, never presented as live reporting.
+      </p>
+    </div>
+
+    <div class="news-grid news-grid-home">
+      {% for article in latest_news %}
+      <article class="news-card reveal" data-delay="{{ loop.index0 % 3 }}">
+        <div class="news-card-top">
+          <span class="badge badge-accent">{{ article.category }}</span>
+          <span class="badge badge-warn">Demo</span>
+        </div>
+        <h3 class="news-title">{{ article.title }}</h3>
+        <p class="news-summary">{{ article.summary }}</p>
+        <p class="news-meta">
+          <span><svg class="icon" aria-hidden="true"><use href="#i-info"></use></svg> {{ article.source }}</span>
+          <span><svg class="icon" aria-hidden="true"><use href="#i-clock"></use></svg> {{ article.date }}</span>
+        </p>
+        <a class="news-more" href="{{ url_for('feed') }}">
+          Read more
+          <svg class="icon" aria-hidden="true"><use href="#i-arrow-right"></use></svg>
+        </a>
+      </article>
+      {% else %}
+      <div class="alert alert-info" role="status">
+        <svg class="icon" aria-hidden="true"><use href="#i-info"></use></svg>
+        <div>No demonstration articles are available right now.</div>
+      </div>
+      {% endfor %}
+    </div>
+
+    <div class="center-actions reveal">
+      <a class="btn btn-primary" href="{{ url_for('feed') }}">
+        <svg class="icon" aria-hidden="true"><use href="#i-news"></use></svg>
+        Open the news feed
+      </a>
+    </div>
+  </div>
+</section>
+
+{# ------------------------------------------------------------------ #}
+{# WHY CHOOSE US                                                       #}
+{# ------------------------------------------------------------------ #}
+<section class="section" id="why-us">
+  <div class="container">
+    <div class="section-head center reveal">
+      <p class="eyebrow">Why choose us</p>
+      <h2 class="section-title">Built to be honest, fast and inspectable</h2>
+      <p class="section-lead">
+        A premium interface around a real model — with the discipline to never overstate
+        what the model can do.
+      </p>
+    </div>
+
+    <div class="why-grid">
+      <article class="why-card reveal">
+        <span class="why-icon" aria-hidden="true"><svg class="icon"><use href="#i-target"></use></svg></span>
+        <h3>Real predictions only</h3>
+        <p>Every label comes from the trained model. Nothing is randomized, no confidence
+           score is ever invented, and no analytics are faked.</p>
+      </article>
+
+      <article class="why-card reveal" data-delay="1">
+        <span class="why-icon" aria-hidden="true"><svg class="icon"><use href="#i-shield"></use></svg></span>
+        <h3>Privacy first</h3>
+        <p>Your headline, article and uploaded files are processed on this server only.
+           Uploaded documents are read in memory and discarded immediately.</p>
+      </article>
+
+      <article class="why-card reveal" data-delay="2">
+        <span class="why-icon" aria-hidden="true"><svg class="icon"><use href="#i-eye"></use></svg></span>
+        <h3>Transparent output</h3>
+        <p>Results explain what the label means — and what it does not. Limitations are
+           stated on every result, in the footer and inside the assistant.</p>
+      </article>
+
+      <article class="why-card reveal">
+        <span class="why-icon" aria-hidden="true"><svg class="icon"><use href="#i-bolt"></use></svg></span>
+        <h3>Fast and lightweight</h3>
+        <p>The model bundle is loaded once per process and reused. One Flask app, one CSS
+           design system, no front-end framework to slow the page down.</p>
+      </article>
+
+      <article class="why-card reveal" data-delay="1">
+        <span class="why-icon" aria-hidden="true"><svg class="icon"><use href="#i-globe"></use></svg></span>
+        <h3>Works everywhere</h3>
+        <p>Responsive from wide desktop down to small phones, keyboard accessible, and
+           respectful of reduced-motion preferences.</p>
+      </article>
+
+      <article class="why-card reveal" data-delay="2">
+        <span class="why-icon" aria-hidden="true"><svg class="icon"><use href="#i-code"></use></svg></span>
+        <h3>Open and inspectable</h3>
+        <p>Training script, preprocessing, metrics and routes are all in the repository —
+           you can verify every claim this interface makes.</p>
+      </article>
+    </div>
+  </div>
+</section>
+
+{# ------------------------------------------------------------------ #}
 {# INTERACTIVE ANALYSIS PREVIEW (real backend)                         #}
 {# ------------------------------------------------------------------ #}
 <section class="section section-alt" id="detect">
@@ -251,7 +660,8 @@
           <li>
             <svg class="icon" aria-hidden="true"><use href="#i-check-circle"></use></svg>
             <span><strong>Same pipeline everywhere.</strong> The homepage preview, the
-              detection page and the API all call one prediction function.</span>
+              detection page, document uploads and the assistant all call one prediction
+              function.</span>
           </li>
           <li>
             <svg class="icon" aria-hidden="true"><use href="#i-check-circle"></use></svg>
@@ -283,99 +693,12 @@
 </section>
 
 {# ------------------------------------------------------------------ #}
-{# FEATURES                                                            #}
+{# TECHNOLOGY STACK                                                    #}
 {# ------------------------------------------------------------------ #}
-<section class="section" id="features">
-  <div class="container">
-    <div class="section-head reveal">
-      <p class="eyebrow">Capabilities</p>
-      <h2 class="section-title">What this project really does</h2>
-      <p class="section-lead">
-        Each item below is implemented in the source code. Anything not listed here is not
-        part of the application.
-      </p>
-    </div>
-
-    <div class="grid grid-2">
-      <div class="reveal">
-        <div class="feature">
-          <span class="feature-icon" aria-hidden="true"><svg class="icon"><use href="#i-cpu"></use></svg></span>
-          <div>
-            <h3>Machine-learning text classification</h3>
-            <p>A trained scikit-learn classifier labels submitted text as REAL or FAKE using
-               TF-IDF features built from your headline and article.</p>
-          </div>
-        </div>
-
-        <div class="feature">
-          <span class="feature-icon" aria-hidden="true"><svg class="icon"><use href="#i-doc"></use></svg></span>
-          <div>
-            <h3>Prediction result page</h3>
-            <p>The verdict is shown with a plain-language explanation, the text you submitted,
-               and a reminder that the output is a model prediction.</p>
-          </div>
-        </div>
-
-        <div class="feature">
-          <span class="feature-icon" aria-hidden="true"><svg class="icon"><use href="#i-pulse"></use></svg></span>
-          <div>
-            <h3>Confidence score</h3>
-            <p>When the classifier exposes class probabilities, the predicted class
-               probability is displayed as a percentage. If it cannot be computed, the score
-               is omitted rather than invented.</p>
-          </div>
-        </div>
-      </div>
-
-      <div class="reveal" data-delay="1">
-        <div class="feature">
-          <span class="feature-icon" aria-hidden="true"><svg class="icon"><use href="#i-clock"></use></svg></span>
-          <div>
-            <h3>Session prediction history</h3>
-            <p>Running totals for your current browser session — checked, real and fake —
-               stored in the Flask session cookie and shown in the snapshot below.</p>
-          </div>
-        </div>
-
-        <div class="feature">
-          <span class="feature-icon" aria-hidden="true"><svg class="icon"><use href="#i-shield"></use></svg></span>
-          <div>
-            <h3>Server-side validation</h3>
-            <p>Empty submissions and over-length input are rejected by Flask before the model
-               runs, so the checks cannot be bypassed by disabling JavaScript.</p>
-          </div>
-        </div>
-
-        <div class="feature">
-          <span class="feature-icon" aria-hidden="true"><svg class="icon"><use href="#i-database"></use></svg></span>
-          <div>
-            <h3>Graceful model handling</h3>
-            <p>If the trained model file is missing or unreadable, the interface explains how
-               to train one instead of failing with a stack trace.</p>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div class="alert alert-info feature-note reveal" role="note">
-      <svg class="icon" aria-hidden="true"><use href="#i-info"></use></svg>
-      <div>
-        <strong>Not included in this build:</strong> fact-checking against independent sources,
-        per-word explainability or feature attribution, author/date metadata analysis, and
-        permanent storage of submitted text. These are deliberately not advertised as working
-        features.
-      </div>
-    </div>
-  </div>
-</section>
-
-{# ------------------------------------------------------------------ #}
-{# PROJECT TECHNOLOGY                                                  #}
-{# ------------------------------------------------------------------ #}
-<section class="section section-alt" id="stack">
+<section class="section" id="stack">
   <div class="container">
     <div class="section-head center reveal">
-      <p class="eyebrow">Project technology</p>
+      <p class="eyebrow">Technology stack</p>
       <h2 class="section-title">The stack behind the interface</h2>
       <p class="section-lead">
         Taken directly from <span class="mono">requirements.txt</span> and the project source —
@@ -386,12 +709,14 @@
     <div class="stack-grid reveal">
       <div class="stack-cell">
         <h3><svg class="icon" aria-hidden="true"><use href="#i-code"></use></svg> Backend</h3>
-        <p>Route handling, form validation, session statistics and template rendering.</p>
+        <p>Route handling, form validation, session statistics, document upload and template rendering.</p>
         <div class="stack-tags">
           <span class="tag">Python 3</span>
           <span class="tag">Flask</span>
           <span class="tag">Jinja2</span>
           <span class="tag">gunicorn</span>
+          <span class="tag">pypdf</span>
+          <span class="tag">python-docx</span>
         </div>
       </div>
 
@@ -457,7 +782,7 @@
 {# ------------------------------------------------------------------ #}
 {# SESSION SNAPSHOT                                                    #}
 {# ------------------------------------------------------------------ #}
-<section class="section" id="dashboard">
+<section class="section section-alt" id="dashboard">
   <div class="container">
     <div class="section-head reveal">
       <p class="eyebrow">Session snapshot</p>
@@ -471,17 +796,17 @@
     <div class="stat-tiles reveal">
       <div class="stat-tile">
         <svg class="icon" aria-hidden="true"><use href="#i-list"></use></svg>
-        <div class="stat-value">{{ stats.total }}</div>
+        <div class="stat-value" data-count="{{ stats.total }}">{{ stats.total }}</div>
         <div class="stat-label">Articles checked</div>
       </div>
       <div class="stat-tile is-real">
         <svg class="icon" aria-hidden="true"><use href="#i-check-circle"></use></svg>
-        <div class="stat-value">{{ stats.real }}</div>
+        <div class="stat-value" data-count="{{ stats.real }}">{{ stats.real }}</div>
         <div class="stat-label">Labelled REAL</div>
       </div>
       <div class="stat-tile is-fake">
         <svg class="icon" aria-hidden="true"><use href="#i-alert"></use></svg>
-        <div class="stat-value">{{ stats.fake }}</div>
+        <div class="stat-value" data-count="{{ stats.fake }}">{{ stats.fake }}</div>
         <div class="stat-label">Labelled FAKE</div>
       </div>
       <div class="stat-tile">

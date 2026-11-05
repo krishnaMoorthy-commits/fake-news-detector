@@ -1,10 +1,13 @@
-# Fake News Detection Using Data Science
+# News Intelligence Platform — Fake News Detection Using Data Science
 
 A Flask web application that classifies news text (headline + article) as
 **REAL** or **FAKE** using a TF-IDF + Logistic Regression Machine Learning
-model. Built as a college academic project demonstrating an end-to-end Data
-Science pipeline: data collection → cleaning → feature extraction →
-Machine Learning → prediction.
+model — wrapped in a premium, futuristic news-intelligence interface with
+document upload, an interactive pipeline visualization, a clearly labelled
+demonstration news feed and a rule-based AI News Assistant. Built as a
+college academic project demonstrating an end-to-end Data Science pipeline:
+data collection → cleaning → feature extraction → Machine Learning →
+prediction.
 
 > **Important honesty note:** This application performs statistical text
 > classification learned from a labelled dataset. It does **not** browse the
@@ -16,23 +19,46 @@ Machine Learning → prediction.
 
 ## Features (Actually Implemented)
 
+- Premium AI-style home page: deep midnight-navy theme, glassmorphism cards,
+  electric-blue/cyan glow accents, animated background (drifting glow orbs,
+  floating particle canvas, fading grid) and scroll-reveal transitions —
+  all disabled automatically under `prefers-reduced-motion`
 - Web form to submit a news headline and/or full article
+- Document upload (drag-and-drop zone + file picker) for **TXT, PDF and
+  DOCX** — extension and 2 MB size validation, in-memory text extraction
+  (`pypdf`, `python-docx`), files are never executed or permanently stored
+- Interactive 7-stage AI workflow visualization that mirrors the **real**
+  pipeline: input → preprocessing → cleaning → TF-IDF features → Logistic
+  Regression → prediction → result (each stage shows the actual function
+  and parameters from `model.py` / `train_model.py`)
+- News feed interface with category filters, search bar, trending block and
+  expandable cards — **demonstration content only**: no news API is
+  configured, so every card is visibly labelled "Demo" with a
+  "Demonstration content" source line and "Sample entry" date
+- AI News Assistant: chat interface backed by transparent rule-based logic
+  (`assistant.py`) — explains the pipeline and real predictions, scans pasted
+  text for sensationalist wording (heuristics), gives fact-checking advice,
+  and states its limitations. No external AI API is used or claimed
 - Server-side text preprocessing (lowercasing, HTML/URL/punctuation removal)
 - TF-IDF vectorization of submitted text
 - Logistic Regression classification (REAL / FAKE)
 - Confidence percentage via `predict_proba()` (only shown when genuinely available)
-- Result page with prediction, confidence bar, explanation and disclaimer
+- Result page with prediction, confidence bar, explanation, source note for
+  uploaded documents and disclaimer
 - Session-based statistics (Total Checked / Real / Fake / Fake Rate) shown on the
-  home and result pages
-- Interactive 3-step "How It Works" explainer and a live preview form on the
-  home page that posts to the real `/predict` endpoint
+  home and result pages, with animated count-up numbers
+- Animated metrics band on the home page reading the real evaluation numbers
+  stored inside the trained `.pkl` bundle (no figure is hardcoded)
 - Model card on the About page that reads the metrics stored inside the
   trained `.pkl` bundle (no figure is hardcoded in the templates)
 - Graceful handling of a missing dataset or missing trained model
-- Responsive, dependency-free UI: one hand-written CSS design system, inline
-  SVG icon sprite and vanilla JavaScript (no Bootstrap, no CDN assets)
+- Responsive from wide desktop to small phones: one hand-written CSS design
+  system, inline SVG icon sprite and vanilla JavaScript (no Bootstrap, no
+  CDN assets)
 - Sticky blur navigation with an active-page indicator, accessible hamburger
   menu, skip link, visible focus rings and `prefers-reduced-motion` support
+- No-JavaScript fallbacks: the analysis form, feed filters (server-side GET),
+  upload form (normal POST) and assistant (HTML reply) all work without JS
 
 ---
 
@@ -43,6 +69,7 @@ Machine Learning → prediction.
 | Backend | Python 3, Flask | Web server & routing |
 | ML | scikit-learn (TF-IDF, Logistic Regression) | Text classification |
 | Data | Pandas, NumPy | Dataset loading & manipulation |
+| Document parsing | pypdf, python-docx | Extracting text from uploaded PDF/DOCX files |
 | Persistence | joblib | Saving/loading the trained vectorizer + model |
 | Frontend | HTML5, Jinja2, CSS3 (custom design system), vanilla JavaScript | UI |
 | Icons / artwork | Inline SVG sprite and hand-drawn SVG illustration | No image or icon library |
@@ -55,9 +82,11 @@ Machine Learning → prediction.
 ```
 fake_news_detector/
 │
-├── app.py                   <- Flask routes, context processor, error handlers
+├── app.py                   <- Flask routes, upload extraction, validation, error handlers
 ├── model.py                 <- preprocessing, model loading, predict_news()
 ├── train_model.py           <- training script (not needed at runtime)
+├── news_feed.py             <- demonstration feed data (no news API)
+├── assistant.py             <- rule-based AI News Assistant engine (no external AI API)
 ├── requirements.txt
 ├── README.md
 ├── render.yaml              <- Render blueprint (gunicorn, $PORT, /healthz)
@@ -70,10 +99,12 @@ fake_news_detector/
 │   └── fake_news_model.pkl  <- generated by train_model.py
 │
 ├── templates/
-│   ├── base.html            <- shared shell: nav, icon sprite, footer
-│   ├── index.html           <- home page
-│   ├── detect.html          <- analysis form page (/detect)
-│   ├── result.html          <- prediction result (/predict)
+│   ├── base.html            <- shared shell: nav, icon sprite, animated bg, footer
+│   ├── index.html           <- premium home page (hero, workflow, feed preview…)
+│   ├── detect.html          <- analysis form + document upload panel (/detect)
+│   ├── result.html          <- prediction result (/predict, /upload)
+│   ├── feed.html            <- news feed with filters and search (/feed)
+│   ├── assistant.html       <- AI News Assistant chat (/assistant)
 │   ├── about.html           <- about + model card
 │   ├── 404.html             <- not-found page
 │   └── partials/
@@ -81,9 +112,9 @@ fake_news_detector/
 │
 └── static/
     ├── css/
-    │   └── style.css        <- design system (CSS variables, all sections)
+    │   └── style.css        <- design system (CSS variables, all sections, animations)
     ├── js/
-    │   └── script.js        <- nav, reveals, inline validation, loading state
+    │   └── script.js        <- nav, reveals, count-ups, workflow, upload, chat, feed
     └── img/
         └── favicon.svg
 ```
@@ -94,15 +125,21 @@ fake_news_detector/
 
 | Route | Method | Page |
 |---|---|---|
-| `/` | GET | Home — hero, technology, how it works, preview form, stack |
-| `/detect` | GET | Analysis form (also used to re-render validation errors) |
+| `/` | GET | Home — hero, about, how it works, AI workflow visualization, capabilities, latest news, why us, stack, session snapshot, preview form |
+| `/detect` | GET | Analysis form + document upload panel (also used to re-render validation errors) |
 | `/predict` | POST | Runs the real model and renders the result page |
+| `/upload` | POST | Extracts text from an uploaded TXT/PDF/DOCX file (in memory) and runs the same prediction flow |
+| `/feed` | GET | News feed — category filter (`?category=`) and search (`?q=`), demonstration content |
+| `/assistant` | GET | AI News Assistant chat interface |
+| `/assistant/ask` | POST | Assistant replies: JSON for the chat UI, HTML fallback without JavaScript |
 | `/about` | GET | Project background, pipeline, limitations, model card |
-| `/healthz` | GET | Plain-text health probe for Render |
+| `/healthz` | GET | Health probe for Render (JSON: `{"status": "ok", ...}`) |
 | anything else | — | `404.html` |
 
 The form fields (`headline`, `article`), the `POST /predict` action and the
-server-side validation rules are unchanged from the original project.
+server-side validation rules are unchanged from the original project —
+`/predict` and `/upload` share one prediction helper, so typed text and
+uploaded documents always travel through the identical pipeline.
 
 ---
 
@@ -182,25 +219,40 @@ server-side validation, XSS escaping, and proof that the real
 python _test_app.py
 ```
 
-Latest run: **82/82 checks passed**.
+Latest run: **189/189 checks passed**, covering 11 sections:
 
-Browser suite (Playwright, run from a scratch directory outside the repo so
-the project stays clean — requires `playwright-core` plus a local Chrome):
+1. Python syntax checks
+2. Imports & app factory
+3. Route registration & page rendering (hero copy, feed and assistant markers)
+4. Template/navigation integrity (nav items, form wiring, no CDN assets,
+   internal links resolve)
+5. Prediction workflow (real model invoked exactly once per submission,
+   escaping, truncation, session stats)
+6. Validation returning to the detection page
+7. Escaping in every user-facing template (no `|safe` on user data)
+8. Document upload with real parsing: TXT / PDF / DOCX happy paths plus
+   rejection of unsupported extensions, oversized files, empty files,
+   unreadable PDFs and missing files — rejected uploads never reach the model
+9. News feed: demo labelling, category filter, search, empty states
+10. AI News Assistant: intent routing, honest rule-based/limitation replies,
+    a real model run for pasted text, session-prediction explanation,
+    length limits and the no-JavaScript HTML fallback
+11. Workflow visualization, upload wiring and design assets (7 real stages,
+    CSS/JS initializers, reduced-motion support)
 
-- `browser_test.mjs` — 4 viewports × 4 pages: no horizontal overflow, no
-  element outside the viewport, no console errors or failed requests,
-  landmarks/headings, mobile menu keyboard behaviour, skip link, focus rings,
-  reduced-motion and no-JS fallbacks, plus a real form submission through the
-  real `/predict` endpoint → **189/189 passed**
-- `visual_review.mjs` — full-page screenshots after scrolling (so reveal
-  animations complete), overflow and content-height checks → **100/100 passed**
-- `sections.mjs` — grid measurements for the technology, stack and stat
-  sections at 1440/1024/768/375 → every row fills its container (no orphaned
-  cells or gaps)
+Live HTTP checks against a running server: every page and static asset
+returns 200, `/predict` returns a real prediction with confidence, multipart
+uploads of TXT/PDF/DOCX return the result page with extracted text, an
+`.exe` upload is rejected, the assistant JSON endpoint answers, and an empty
+POST re-renders the form with an error.
 
-Manual HTTP checks against a running server: all pages and static assets
-return 200, `/predict` returns a real prediction, an empty POST re-renders the
-form with an error, unknown URLs return the styled 404 page.
+Responsive browser pass (headless Chrome via the DevTools protocol, driver
+kept outside the repository): 5 pages × 4 viewports
+(1440 / 1024 / 768 / 390 px) — **0 console errors, 0 failed network
+requests, 0 stuck reveal animations** — plus interaction checks (workflow
+stage selection, feed live search, assistant chat round-trip) and a
+`prefers-reduced-motion` emulation run, with full-page screenshots reviewed
+at every breakpoint.
 
 ---
 
@@ -287,6 +339,14 @@ into the running application.
   represented in the training data.
 - Dashboard statistics are per-session only (stored in the Flask session)
   and reset when the session/cookies are cleared or the server restarts.
+- **News feed:** no news API is configured, so the feed serves static
+  demonstration content that is explicitly labelled as such — it is not
+  live or breaking news.
+- **AI News Assistant:** no external AI API is configured, so the assistant
+  is rule-based (written responses in `assistant.py`), not a generative
+  model. It explains what it is programmed to explain and says so.
+- **Uploaded documents** are parsed in memory and discarded; extracted text
+  beyond 10,000 characters is not analyzed.
 
 ---
 
@@ -297,9 +357,17 @@ into the running application.
 - Input length is capped at 10,000 characters, enforced both client-side
   (JavaScript + `maxlength`) and server-side (Flask).
 - All user-submitted text is rendered through Jinja's default auto-escaping
-  — no raw/unsafe HTML rendering is used anywhere.
+  — no raw/unsafe HTML rendering is used anywhere (including assistant
+  replies and the no-JS chat fallback).
 - Missing dataset and missing/corrupted model files are handled with
   friendly, non-technical error messages instead of raw stack traces.
 - No third-party front-end assets: CSS, JavaScript, icons and the hero
   illustration all ship from `static/`, so nothing depends on a CDN at
   runtime (and nothing breaks if one is unreachable).
+- Uploaded documents are validated by extension (`.txt`, `.pdf`, `.docx`)
+  and size (2 MB max), read into memory a single time, parsed with dedicated
+  libraries, never executed and never written to disk. Empty and unreadable
+  files are rejected with a friendly message before the model is touched,
+  and the server never echoes internal stack traces to the browser.
+- No API keys are used or exposed: the feed and the assistant are local,
+  and nothing user-submitted is sent to an external service.

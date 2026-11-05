@@ -1,0 +1,184 @@
+{% extends "base.html" %}
+
+{% block title %}AI News Assistant — News Intelligence Platform{% endblock %}
+{% block meta_description %}Chat-style assistant that explains the fake-news model's pipeline and predictions, scans text for sensationalist wording, and shares fact-checking advice.{% endblock %}
+
+{% block content %}
+<section class="page-hero">
+  <div class="container">
+    <ol class="breadcrumb">
+      <li><a href="{{ url_for('index') }}">Home</a></li>
+      <li aria-hidden="true"><svg class="icon"><use href="#i-arrow-right"></use></svg></li>
+      <li aria-current="page">AI News Assistant</li>
+    </ol>
+    <p class="eyebrow">AI News Assistant</p>
+    <h1>Ask about the model, a prediction, or a claim</h1>
+    <p class="muted">
+      A chat interface for questions about news analysis. Responses come from transparent,
+      rule-based logic inside this application — there is no generative AI behind it, and it
+      never claims a prediction proves anything true or false.
+    </p>
+  </div>
+</section>
+
+<section class="section">
+  <div class="container assistant-layout">
+
+    {# ------------------------------------------------------------------ #}
+    {# Chat panel                                                          #}
+    {# ------------------------------------------------------------------ #}
+    <div class="chat-panel reveal" aria-labelledby="chatTitle">
+      <header class="chat-head">
+        <span class="chat-avatar" aria-hidden="true">
+          <svg class="icon"><use href="#i-spark"></use></svg>
+        </span>
+        <div class="chat-head-text">
+          <h2 id="chatTitle">News Intelligence Assistant</h2>
+          <p class="chat-status">
+            <span class="pulse-dot" aria-hidden="true"></span>
+            {{ assistant_notice }}
+          </p>
+        </div>
+      </header>
+
+      <div class="chat-messages" id="chatMessages" role="log" aria-live="polite"
+           aria-relevant="additions" tabindex="0">
+
+        {# Server-rendered opening message (static text, auto-escaped). #}
+        <div class="chat-msg bot">
+          <span class="msg-avatar" aria-hidden="true"><svg class="icon"><use href="#i-spark"></use></svg></span>
+          <div class="msg-bubble">
+            <p>Hello! I'm the News Intelligence Assistant. Ask me how the detection model works, what a label or confidence score means, or paste an article and ask me to check its wording.</p>
+            <p>I'm rule-based — a written set of response rules in <span class="mono">assistant.py</span>, not a large language model. No external AI API is configured for this project, so nothing you send here leaves this server.</p>
+            <p class="msg-limitation">{{ assistant_limitation }}</p>
+          </div>
+        </div>
+
+        {% if initial_user %}
+        <div class="chat-msg user">
+          <div class="msg-bubble"><p>{{ initial_user }}</p></div>
+        </div>
+        {% endif %}
+
+        {% if initial_reply %}
+        <div class="chat-msg bot">
+          <span class="msg-avatar" aria-hidden="true"><svg class="icon"><use href="#i-spark"></use></svg></span>
+          <div class="msg-bubble"><p>{{ initial_reply }}</p></div>
+        </div>
+        {% endif %}
+      </div>
+
+      <div class="chat-suggestions" aria-label="Suggested questions">
+        <button type="button" class="chip-btn" data-prompt="How does the model work?">How does the model work?</button>
+        <button type="button" class="chip-btn" data-prompt="Explain my last prediction">Explain my last prediction</button>
+        <button type="button" class="chip-btn" data-prompt="What are your limitations?">What are your limitations?</button>
+        <button type="button" class="chip-btn" data-prompt="How do I check if a claim is credible?">How do I verify a claim?</button>
+        <button type="button" class="chip-btn" data-prompt="What can you tell me about uploading documents?">Upload help</button>
+      </div>
+
+      <form class="chat-form" id="assistantForm" action="{{ url_for('assistant_ask') }}" method="POST">
+        <label class="sr-only" for="assistantInput">Your message</label>
+        <textarea class="textarea chat-input" id="assistantInput" name="message" rows="2"
+                  maxlength="6000" placeholder="Ask a question, or paste text and say &quot;check this text&quot;&hellip;"
+                  aria-describedby="chatHint"></textarea>
+        <div class="chat-form-actions">
+          <p class="field-hint" id="chatHint">Enter sends &middot; Shift+Enter adds a line &middot; 6,000 character limit</p>
+          <button type="submit" class="btn btn-primary" id="chatSendBtn">
+            <span class="btn-text">
+              Send
+              <svg class="icon icon-arrow" aria-hidden="true"><use href="#i-arrow-right"></use></svg>
+            </span>
+            <span class="btn-loading">
+              <span class="spinner" aria-hidden="true"></span>
+              Thinking&hellip;
+            </span>
+          </button>
+        </div>
+        <div class="alert-stack" id="chatErrors" role="alert"{% if not initial_error %} hidden{% endif %}>
+          {% if initial_error %}
+          <div class="alert alert-error" role="alert">
+            <svg class="icon" aria-hidden="true"><use href="#i-alert"></use></svg>
+            <div>{{ initial_error }}</div>
+          </div>
+          {% endif %}
+        </div>
+      </form>
+    </div>
+
+    {# ------------------------------------------------------------------ #}
+    {# Side panel                                                          #}
+    {# ------------------------------------------------------------------ #}
+    <aside class="assistant-side reveal" data-delay="1" aria-label="About this assistant">
+
+      {% if last_prediction %}
+      <div class="panel-flat chat-context">
+        <h2 class="panel-title" style="font-size:var(--fs-2);">Your last analysis</h2>
+        <p class="chat-context-line">
+          Model label:
+          <span class="badge {{ 'badge-real' if last_prediction.label == 'REAL' else 'badge-fake' }}">
+            <svg class="icon" aria-hidden="true"><use href="{{ '#i-check-circle' if last_prediction.label == 'REAL' else '#i-alert' }}"></use></svg>
+            {{ last_prediction.label }}
+          </span>
+        </p>
+        <p class="chat-context-line">
+          Confidence:
+          {% if last_prediction.confidence is not none %}
+            <strong class="mono">{{ last_prediction.confidence }}%</strong>
+          {% else %}
+            <span class="muted">not available for that prediction</span>
+          {% endif %}
+        </p>
+        <p class="field-hint">
+          Ask &ldquo;explain my last prediction&rdquo; to have these real numbers explained.
+        </p>
+      </div>
+      {% endif %}
+
+      <div class="panel-flat">
+        <h2 class="panel-title" style="font-size:var(--fs-2);">What I can do</h2>
+        <ul class="aside-list">
+          <li>
+            <svg class="icon" aria-hidden="true"><use href="#i-branch"></use></svg>
+            <span><strong>Explain the pipeline</strong> — preprocessing, TF-IDF features,
+              classification and how the result page is produced.</span>
+          </li>
+          <li>
+            <svg class="icon" aria-hidden="true"><use href="#i-pulse"></use></svg>
+            <span><strong>Explain a prediction</strong> — what REAL/FAKE and the confidence
+              percentage do and do not mean, using your actual session result.</span>
+          </li>
+          <li>
+            <svg class="icon" aria-hidden="true"><use href="#i-search"></use></svg>
+            <span><strong>Scan pasted text</strong> — run the real model plus heuristic
+              checks for sensationalist wording (style signals only).</span>
+          </li>
+          <li>
+            <svg class="icon" aria-hidden="true"><use href="#i-shield"></use></svg>
+            <span><strong>Credibility advice</strong> — practical steps for verifying a
+              claim yourself before sharing it.</span>
+          </li>
+        </ul>
+      </div>
+
+      <div class="alert alert-warning" role="note">
+        <svg class="icon" aria-hidden="true"><use href="#i-alert"></use></svg>
+        <div>
+          <strong>Stated limitations:</strong> I am a rule-based assistant, not a
+          generative AI. I cannot browse the internet, cannot fact-check against sources,
+          and nothing I say proves an article is true or false.
+        </div>
+      </div>
+
+      <div class="alert alert-info" role="note">
+        <svg class="icon" aria-hidden="true"><use href="#i-info"></use></svg>
+        <div>
+          Need an actual verdict on a text? Submit it on the
+          <a href="{{ url_for('detect') }}">detection page</a> to run the trained model —
+          or paste it here and say &ldquo;check this text&rdquo;.
+        </div>
+      </div>
+    </aside>
+
+  </div>
+</section>
+{% endblock %}
