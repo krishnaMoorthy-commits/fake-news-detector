@@ -9,6 +9,8 @@ Routes:
     GET  /detect      -> news-input form + document upload panel
     POST /predict     -> runs the ML prediction and renders the result page
     POST /upload      -> extracts text from a TXT/PDF/DOCX file and predicts
+    GET/POST /compare -> News Comparison Lab (two articles, same model)
+    GET  /analytics   -> Intelligence Analytics dashboard (session data only)
     GET  /feed        -> news feed interface (clearly labelled demo content)
     GET  /assistant   -> AI News Assistant chat interface
     POST /assistant/ask -> rule-based assistant replies (JSON)
@@ -30,7 +32,9 @@ import logging
 import os
 import re
 import secrets
-from datetime import date
+import time
+from collections import Counter
+from datetime import date, datetime, timedelta
 
 from flask import Flask, jsonify, render_template, request, session
 
@@ -104,6 +108,63 @@ def update_stats(label: str) -> dict:
     session["stats"] = stats
     session.modified = True
     return stats
+
+
+# ---------------------------------------------------------------------------
+# Per-session analysis history (powers the Intelligence Analytics dashboard)
+# ---------------------------------------------------------------------------
+# Like the counters above, this lives in the signed Flask session cookie:
+# each visitor only ever sees their own analyses, nothing is shared between
+# users, and closing the browser / restarting the server clears it. Entries
+# are shape-checked on read so a tampered cookie can never inject markup or
+# bogus labels into the dashboard.
+ANALYSIS_HISTORY_LIMIT = 30
+
+
+def get_analysis_history() -> list[dict]:
+    """Return the current session's validated analysis history (oldest first)."""
+    history = session.get("analysis_history")
+    if not isinstance(history, list):
+        return []
+    clean = []
+    for entry in history:
+        if not isinstance(entry, dict):
+            continue
+        label = entry.get("label")
+        ts = entry.get("ts")
+        if label not in ("REAL", "FAKE") or not isinstance(ts, (int, float)):
+            continue
+        confidence = entry.get("confidence")
+        if not isinstance(confidence, (int, float)):
+            confidence = None
+        clean.append(
+            {
+                "label": label,
+                "confidence": round(float(confidence), 2)
+                if confidence is not None
+                else None,
+                "snippet": str(entry.get("snippet") or "")[:160],
+                "ts": float(ts),
+            }
+        )
+    return clean
+
+
+def append_analysis_history(headline: str, article: str, result: dict) -> None:
+    """Remember one real prediction for the analytics dashboard (session only)."""
+    raw = (headline or "").strip() or (article or "").strip()
+    snippet = re.sub(r"\s+", " ", raw).strip()[:150]
+    history = get_analysis_history()
+    history.append(
+        {
+            "label": result.get("label"),
+            "confidence": result.get("confidence"),
+            "snippet": snippet,
+            "ts": time.time(),
+        }
+    )
+    session["analysis_history"] = history[-ANALYSIS_HISTORY_LIMIT:]
+    session.modified = True
 
 
 # ---------------------------------------------------------------------------
@@ -215,6 +276,16 @@ def inject_stats():
     }
 
 
+@app.template_filter("timestamp_label")
+def timestamp_label(ts) -> str:
+    """Human-friendly local timestamp for analytics history rows."""
+    try:
+        return datetime.fromtimestamp(float(ts)).strftime("%d %b, %I:%M %p")
+    except (TypeError, ValueError, OSError, OverflowError):
+        # A tampered/odd cookie value must never break the dashboard.
+        return "unknown time"
+
+
 @app.route("/healthz")
 def healthz():
     """Lightweight health check used by the hosting platform."""
@@ -323,6 +394,9 @@ def run_prediction(headline: str, article: str, *, error_field: str = "error",
         )
 
     stats = update_stats(result["label"])
+    # Remember the analysis for the Intelligence Analytics dashboard
+    # (session-scoped — other visitors never see it).
+    append_analysis_history(headline, article, result)
 
     # Remember the latest real prediction so the AI News Assistant can
     # explain it on request (session-scoped, never fabricated).
@@ -370,6 +444,233 @@ def predict():
     headline = (request.form.get("headline") or "").strip()
     article = (request.form.get("article") or "").strip()
     return run_prediction(headline, article)
+
+
+# ---------------------------------------------------------------------------
+# News Comparison Lab (/compare)
+# ---------------------------------------------------------------------------
+def text_similarity(text_a: str, text_b: str) -> dict:
+    """
+    Genuine word-level similarity between two texts.
+
+    Both texts go through the model's own preprocessing (model.py), then a
+    Jaccard index over the resulting word sets is computed together with the
+    shared vocabulary. Every number returned here is calculated from the
+    submitted text — nothing is estimated or invented. An empty side (no
+    English letters survived preprocessing) yields jaccard=None so the page
+    can say "not comparable" instead of showing a fake 0%.
+    """
+    words_a = ml.preprocess_text(text_a or "").split()
+    words_b = ml.preprocess_text(text_b or "").split()
+    set_a, set_b = set(words_a), set(words_b)
+    union = set_a | set_b
+    intersection = set_a & set_b
+
+    jaccard = None
+    if union:
+        jaccard = round(100.0 * len(intersection) / len(union), 1)
+
+    # Shared terms ranked by combined frequency (Counter addition keeps only
+    # keys present in both counters, so the result really is shared vocabulary).
+    shared_terms = [
+        word for word, _ in (Counter(words_a) + Counter(words_b)).most_common(12)
+    ]
+
+    # Terms only one side uses, ranked by how often they appear on that side.
+    # These are real vocabulary differences computed from the submitted text.
+    unique_a_terms = [
+        word for word, _ in Counter(words_a).most_common(40) if word in set_a - set_b
+    ][:8]
+    unique_b_terms = [
+        word for word, _ in Counter(words_b).most_common(40) if word in set_b - set_a
+    ][:8]
+
+    return {
+        "jaccard": jaccard,
+        "shared_terms": shared_terms,
+        "unique_a_terms": unique_a_terms,
+        "unique_b_terms": unique_b_terms,
+        "shared_count": len(intersection),
+        "unique_a": len(set_a - set_b),
+        "unique_b": len(set_b - set_a),
+        "words_a": len(words_a),
+        "words_b": len(words_b),
+        "comparable": bool(union),
+    }
+
+
+def _compare_side(headline: str, article: str, error_field: str):
+    """
+    Validate one side of the comparison form.
+
+    Returns (None, error_message) on failure or (combined_text, None) on
+    success, where combined_text is what the model would actually score.
+    """
+    label = "Article A" if error_field == "error_a" else "Article B"
+    if not headline and not article:
+        return None, f"Please enter a headline or article text for {label}."
+    if len(headline) + len(article) > MAX_INPUT_LENGTH:
+        return None, (
+            f"{label} is too long. Please limit each article to "
+            f"{MAX_INPUT_LENGTH:,} characters in total."
+        )
+    return f"{headline.strip()} {article.strip()}".strip(), None
+
+
+@app.route("/compare", methods=["GET", "POST"])
+def compare():
+    """
+    News Comparison Lab: run the SAME trained model over two articles and
+    present both predictions side by side with a genuine word-level
+    similarity calculation.
+
+    Differing labels are never presented as proof that one article is
+    factually wrong — two model outputs are still just two model outputs.
+    """
+    if request.method == "GET":
+        return render_template("compare.html", model_ready=ml.model_exists())
+
+    headline_a = (request.form.get("headline_a") or "").strip()
+    article_a = (request.form.get("article_a") or "").strip()
+    headline_b = (request.form.get("headline_b") or "").strip()
+    article_b = (request.form.get("article_b") or "").strip()
+
+    context = {
+        "headline_a": headline_a,
+        "article_a": article_a,
+        "headline_b": headline_b,
+        "article_b": article_b,
+        "model_ready": ml.model_exists(),
+    }
+
+    combined_a, error_a = _compare_side(headline_a, article_a, "error_a")
+    combined_b, error_b = _compare_side(headline_b, article_b, "error_b")
+    if error_a or error_b:
+        context["error_a"] = error_a
+        context["error_b"] = error_b
+        return render_template("compare.html", **context)
+
+    try:
+        bundle = ml.load_model()
+    except ml.ModelNotFoundError:
+        context["error"] = (
+            "The trained model is not available. Please place your dataset "
+            "at dataset/news.csv and run 'python train_model.py'."
+        )
+        return render_template("compare.html", **context)
+    except ml.ModelLoadError as exc:
+        context["error"] = str(exc)
+        return render_template("compare.html", **context)
+
+    try:
+        # Both articles are scored by the SAME loaded bundle: identical
+        # preprocessing, identical vectorizer, identical classifier.
+        result_a = ml.predict_news(headline_a, article_a, bundle)
+        result_b = ml.predict_news(headline_b, article_b, bundle)
+    except Exception:  # noqa: BLE001 - never leak stack traces to the client
+        context["error"] = (
+            "Something went wrong while analyzing these articles. Please try again."
+        )
+        return render_template("compare.html", **context)
+
+    # Both analyses are real model runs, so both count toward this session's
+    # statistics and history — exactly like two separate /predict submissions.
+    for hl, art, res in (
+        (headline_a, article_a, result_a),
+        (headline_b, article_b, result_b),
+    ):
+        update_stats(res["label"])
+        append_analysis_history(hl, art, res)
+
+    similarity = text_similarity(combined_a, combined_b)
+
+    confidence_gap = None
+    if result_a["confidence"] is not None and result_b["confidence"] is not None:
+        confidence_gap = round(abs(result_a["confidence"] - result_b["confidence"]), 2)
+
+    context.update(
+        {
+            "analyzed": True,
+            "result_a": result_a,
+            "result_b": result_b,
+            "similarity": similarity,
+            "labels_match": result_a["label"] == result_b["label"],
+            "confidence_gap": confidence_gap,
+            "warning_a": script_language_warning(headline_a, article_a),
+            "warning_b": script_language_warning(headline_b, article_b),
+            "explanation_a": (
+                "The machine-learning model classified this text as potentially "
+                "misleading based on patterns learned from the training dataset."
+                if result_a["label"] == "FAKE"
+                else "The machine-learning model classified this text as likely real "
+                "based on patterns learned from the training dataset."
+            ),
+            "explanation_b": (
+                "The machine-learning model classified this text as potentially "
+                "misleading based on patterns learned from the training dataset."
+                if result_b["label"] == "FAKE"
+                else "The machine-learning model classified this text as likely real "
+                "based on patterns learned from the training dataset."
+            ),
+        }
+    )
+    return render_template("compare.html", **context)
+
+
+# ---------------------------------------------------------------------------
+# Intelligence Analytics dashboard (/analytics)
+# ---------------------------------------------------------------------------
+@app.route("/analytics")
+def analytics():
+    """
+    Session-scoped analytics dashboard.
+
+    Every figure on this page comes from real data: the session's own
+    counters and analysis history, or metrics recorded inside the trained
+    model bundle at training time. No sample data is ever mixed in, and one
+    visitor's history is never visible to another (it lives in their own
+    signed session cookie).
+    """
+    stats = get_stats()
+    history = get_analysis_history()
+
+    # --- Recent activity (newest first, capped for display) ---------------
+    recent = list(reversed(history[-8:]))
+
+    # --- Weekly activity: only when timestamps exist ----------------------
+    weekly = []
+    if history:
+        today = date.today()
+        days = [today - timedelta(days=i) for i in range(6, -1, -1)]
+        counts = {d.isoformat(): 0 for d in days}
+        for entry in history:
+            # Session timestamps are local epoch seconds; a value outside the
+            # last 7 days simply falls outside the buckets and is ignored.
+            day = datetime.fromtimestamp(entry["ts"]).date().isoformat()
+            if day in counts:
+                counts[day] += 1
+        weekly = [
+            {
+                "day": d.strftime("%a"),
+                "date": d.isoformat(),
+                "count": counts[d.isoformat()],
+            }
+            for d in days
+        ]
+
+    # --- Label distribution (genuine, derived from the counters) ----------
+    distribution = {"REAL": stats["real"], "FAKE": stats["fake"]}
+
+    return render_template(
+        "analytics.html",
+        stats=stats,
+        recent=recent,
+        weekly=weekly,
+        distribution=distribution,
+        has_history=bool(history),
+        history_limit=ANALYSIS_HISTORY_LIMIT,
+        metrics=get_model_metrics(),
+    )
 
 
 # ---------------------------------------------------------------------------

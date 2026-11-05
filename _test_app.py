@@ -729,6 +729,228 @@ check("widget still hidden on assistant page after voice additions",
 
 print()
 print("=" * 78)
+print("13. NEWS COMPARISON LAB / ANALYTICS / 3D EXPERIENCE")
+print("=" * 78)
+
+# --- new routes declared ---------------------------------------------------
+rules = {str(r) for r in app_module.app.url_map.iter_rules()}
+for expected in ["/compare", "/analytics"]:
+    check(f"route exists: {expected}", expected in rules, f"got {sorted(rules)}")
+
+# --- GET /compare ----------------------------------------------------------
+compare_page = client.get("/compare")
+compare_html = compare_page.get_data(as_text=True)
+check("GET /compare -> 200", compare_page.status_code == 200, str(compare_page.status_code))
+for marker in ["Article inputs", 'id="headlineA"', 'id="articleA"',
+               'id="headlineB"', 'id="articleB"', "Analyze both articles",
+               "Clear all", 'data-scene="panels"']:
+    check(f"/compare contains {marker!r}", marker in compare_html, "marker missing")
+check("/compare warns output is not a fact-check",
+      "not a verified fact-check" in compare_html, "")
+check("/compare loads compare.js", "js/compare.js" in compare_html, "")
+
+# --- POST /compare: two real model runs -----------------------------------
+before_calls = call_counter["n"]
+resp = client.post("/compare", data={
+    "headline_a": "Council approves riverside park budget",
+    "article_a": ("The city council voted on Tuesday to approve a funding package "
+                  "for a new riverside park with walking paths and lighting."),
+    "headline_b": "You won't BELIEVE this park secret",
+    "article_b": ("Share this before it gets deleted because officials are hiding "
+                  "the truth about the park from the public forever."),
+})
+compare_result = resp.get_data(as_text=True)
+check("POST /compare -> 200 with results", resp.status_code == 200
+      and "Side-by-side results" in compare_result, str(resp.status_code))
+check("POST /compare runs the model exactly twice",
+      call_counter["n"] - before_calls == 2,
+      f"delta={call_counter['n'] - before_calls}")
+check("compare shows Article A verdict", "Article A &mdash; model prediction" in compare_result)
+check("compare shows Article B verdict", "Article B &mdash; model prediction" in compare_result)
+check("compare shows a genuine similarity calculation",
+      "Word-level similarity" in compare_result
+      and re.search(r'id="simValue">\d+(\.\d+)?%', compare_result) is not None,
+      "no computed overlap value found")
+compare_norm = re.sub(r"\s+", " ", compare_result)
+check("compare explains differing labels are not proof of inconsistency",
+      "factually inconsistent" in compare_norm
+      or "the model found similar statistical patterns" in compare_norm,
+      "neither interpretation note found")
+check("compare never claims independent verification",
+      "does not verify claims against independent sources" in compare_result, "")
+check("compare offers a download report control",
+      'id="downloadReport"' in compare_result, "")
+
+# --- identical texts must produce 100% overlap ----------------------------
+resp = client.post("/compare", data={
+    "headline_a": "Same headline for both sides",
+    "article_a": "Identical wording appears in both panels for this overlap test.",
+    "headline_b": "Same headline for both sides",
+    "article_b": "Identical wording appears in both panels for this overlap test.",
+})
+identical = resp.get_data(as_text=True)
+check("identical articles report 100% word overlap",
+      re.search(r'id="simValue">100(\.0)?%', identical) is not None,
+      "expected 100% jaccard for identical text")
+
+# --- missing side is rejected server-side ---------------------------------
+resp = client.post("/compare", data={
+    "headline_a": "Only article A exists here",
+    "article_a": "Some text for A.",
+    "headline_b": "", "article_b": "",
+})
+missing = resp.get_data(as_text=True)
+check("compare rejects an empty Article B",
+      resp.status_code == 200
+      and "Please enter a headline or article text for Article B." in missing,
+      str(resp.status_code))
+
+# --- XSS: user text is escaped on the compare page ------------------------
+resp = client.post("/compare", data={
+    "headline_a": '<script>alert("cmp")</script>',
+    "article_a": "Plain body text for the escaping check.",
+    "headline_b": "Safe headline B",
+    "article_b": "Plain body text for the escaping check.",
+})
+xss = resp.get_data(as_text=True)
+check("compare escapes submitted headlines",
+      "<script>alert" not in xss and "&lt;script&gt;" in xss, "raw script tag leaked")
+
+# --- genuine similarity helper (unit level) -------------------------------
+sim = app_module.text_similarity("the quick brown fox", "the quick brown fox")
+check("text_similarity: identical text -> 100%", sim["jaccard"] == 100.0, str(sim))
+sim = app_module.text_similarity("apple banana cherry", "zebra quantum physics")
+check("text_similarity: disjoint text -> 0%", sim["jaccard"] == 0.0, str(sim))
+sim = app_module.text_similarity("", "   ")
+check("text_similarity: empty text is flagged not comparable",
+      sim["comparable"] is False and sim["jaccard"] is None, str(sim))
+sim = app_module.text_similarity(
+    "market shares rose sharply today after the vote",
+    "shares rose today but market observers warned of risk")
+check("text_similarity: shared terms are really shared",
+      "shares" in sim["shared_terms"] and sim["shared_count"] >= 3, str(sim))
+check("text_similarity: unique vocabularies listed per side",
+      len(sim["unique_a_terms"]) > 0 and len(sim["unique_b_terms"]) > 0, str(sim))
+
+# --- GET /analytics --------------------------------------------------------
+fresh = app_module.app.test_client()   # brand-new session = brand-new visitor
+fresh_html = fresh.get("/analytics").get_data(as_text=True)
+analytics_html = client.get("/analytics").get_data(as_text=True)
+
+for marker in ["Intelligence Analytics", "Articles analyzed", "Labelled REAL",
+               "Labelled FAKE", "session only", "Model quality (recorded at training time)",
+               'id="analyticsData"']:
+    check(f"/analytics contains {marker!r}", marker in analytics_html, "marker missing")
+
+check("fresh visitor sees zeroed empty states (no sample data)",
+      "No analyses yet." in fresh_html and "No timestamps to plot yet." in fresh_html,
+      "fresh session must not display invented statistics")
+check("fresh visitor analytics shows 0 analyzed",
+      'data-count="0"' in fresh_html, "")
+
+# --- session privacy: one visitor's history never reaches another ---------
+client.post("/predict", data={"headline": "PRIVATE_SESSION_MARKER headline",
+                              "article": "PRIVATE_SESSION_MARKER body text."})
+own = client.get("/analytics").get_data(as_text=True)
+other = fresh.get("/analytics").get_data(as_text=True)
+check("owner sees their own analysis in history",
+      "PRIVATE_SESSION_MARKER" in own, "own history missing snippet")
+check("other sessions never see someone else's history",
+      "PRIVATE_SESSION_MARKER" not in other, "cross-session leak detected")
+check("analytics totals reflect this session's real runs",
+      int(re.search(r'data-count="(\d+)"', own).group(1)) > 0, "")
+check("owner sees the weekly activity chart (timestamps exist)",
+      'id="weekChart"' in own and "Weekly activity" in own, "")
+
+# --- navigation ------------------------------------------------------------
+nav_markers = ["News Comparison Lab", "Intelligence Analytics"]
+home_html = home  # homepage fetched earlier
+for label in ["Compare", "Analytics"]:
+    check(f"navigation offers {label!r}", f">{label}</a>" in home_html, "")
+for label in nav_markers:
+    check(f"footer offers {label!r}", f">{label}</a>" in home_html, "")
+check("nav marks Compare active on /compare",
+      'class="nav-link is-active"' in compare_html and "aria-current=\"page\"" in compare_html, "")
+check("nav marks Analytics active on /analytics",
+      'class="nav-link is-active"' in fresh_html and "aria-current=\"page\"" in fresh_html, "")
+
+# --- premium 3D experience assets -----------------------------------------
+scene_js = (BASE / "static" / "js" / "scene3d.js").read_text(encoding="utf-8")
+check("scene3d.js implements all four scenes",
+      all(fn in scene_js for fn in
+          ["buildNeural", "buildScanner", "buildPanels", "buildBars"]), "")
+check("scene3d.js maps every declared scene type",
+      all(t in scene_js for t in
+          ["neural:", "scanner:", "panels:", "bars:"]), "")
+check("scene3d.js lazy-loads three.js", "vendor/three.min.js" in scene_js, "")
+check("scene3d.js honours prefers-reduced-motion", "prefers-reduced-motion" in scene_js, "")
+check("scene3d.js probes WebGL before rendering", "webglAvailable" in scene_js, "")
+check("scene3d.js pauses off-screen rendering", "IntersectionObserver" in scene_js
+      and "document.hidden" in scene_js, "")
+check("scene3d.js contains no innerHTML assignment",
+      ".innerHTML" not in scene_js, "")
+check("scene3d.js contains no external CDN or API key",
+      re.search(r"api[_-]?key|Bearer |cdn\.|unpkg|jsdelivr", scene_js, re.I) is None, "")
+
+for path, marker in [("/", 'data-scene="neural"'), ("/detect", 'data-scene="scanner"')]:
+    page = client.get(path).get_data(as_text=True)
+    check(f"{path} declares its 3D scene", marker in page, "")
+check("base.html loads scene3d.js on every page", "js/scene3d.js" in home_html, "")
+
+three_js = BASE / "static" / "js" / "vendor" / "three.min.js"
+chart_js = BASE / "static" / "js" / "vendor" / "chart.umd.min.js"
+check("three.js vendored locally (>400 KB)",
+      three_js.exists() and three_js.stat().st_size > 400_000,
+      str(three_js.stat().st_size if three_js.exists() else 0))
+check("chart.js vendored locally (>100 KB)",
+      chart_js.exists() and chart_js.stat().st_size > 100_000,
+      str(chart_js.stat().st_size if chart_js.exists() else 0))
+
+analytics_js = (BASE / "static" / "js" / "analytics.js").read_text(encoding="utf-8")
+check("analytics.js animates counters", "data-count" in analytics_js, "")
+check("analytics.js degrades to text if Chart.js fails",
+      "could not be loaded" in analytics_js, "")
+check("analytics.js reads server-rendered session data",
+      "analyticsData" in analytics_js and "getElementById(\"analyticsData\")" in analytics_js, "")
+check("analytics.js contains no hardcoded statistics",
+      re.search(r"\b(distribution|weekly)\s*[:=]\s*\{[^}]*\d", analytics_js) is None,
+      "possible fabricated chart data")
+check("analytics page loads vendored chart.js", "vendor/chart.umd.min.js"
+      in client.get("/analytics").get_data(as_text=True), "")
+
+# --- premium detection page additions -------------------------------------
+check("detect page offers the paste-article button",
+      'id="pasteArticleBtn"' in detect_page and 'id="pasteNote"' in detect_page, "")
+check("script.js implements initPasteButton", "function initPasteButton"
+      in (BASE / "static" / "js" / "script.js").read_text(encoding="utf-8"), "")
+
+# --- CSS for the new experience -------------------------------------------
+for cls in [".cmp-input-grid", ".cmp-verdict-grid", ".cmp-agree", ".cmp-sim-value",
+            ".dash-grid", ".dash-card", ".scene", "[data-tilt]", ".history-item",
+            ".mic-btn::after", "@keyframes sim-grow", "@keyframes sf-spin"]:
+    check(f"CSS: {cls} present", cls in css_check, "")
+check("CSS: reduced-motion covers the 3D + tilt layer",
+      css_check.count("prefers-reduced-motion") >= 4,
+      str(css_check.count("prefers-reduced-motion")))
+check("CSS: hero scenes hidden on phones",
+      ".page-hero .scene { display: none; }" in css_check.replace("  ", " "), "")
+
+# --- new JS contains no secrets / no raw HTML injection -------------------
+for js_name in ["compare.js", "analytics.js"]:
+    src = (BASE / "static" / "js" / js_name).read_text(encoding="utf-8")
+    check(f"{js_name} contains no API keys or external services",
+          re.search(r"api[_-]?key|Bearer |rapidapi|openai", src, re.I) is None, "")
+    check(f"{js_name} never assigns innerHTML", ".innerHTML" not in src, "")
+
+# --- final regression sweep ------------------------------------------------
+resp = client.post("/predict", data={"headline": "Final regression check",
+                                     "article": "The original single-article flow must still work."})
+check("single-article prediction still works after all additions",
+      resp.status_code == 200 and "Prediction result" in resp.get_data(as_text=True),
+      str(resp.status_code))
+
+print()
+print("=" * 78)
 print("SUMMARY")
 print("=" * 78)
 print(f"  passed: {len(PASS)}")

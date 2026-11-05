@@ -74,8 +74,13 @@
     <span class="samples-label">Try a sample:</span>
     <button type="button" class="chip-btn" data-sample="neutral">Neutral report</button>
     <button type="button" class="chip-btn" data-sample="sensational">Sensational claim</button>
+    <button type="button" class="chip-btn" id="pasteArticleBtn" title="Paste the clipboard into the article field">
+      <svg class="icon" aria-hidden="true" style="width:.9em;height:.9em;vertical-align:-.12em;"><use href="#i-doc"></use></svg>
+      Paste article
+    </button>
     <button type="button" class="chip-btn" data-sample="clear">Clear form</button>
   </div>
+  <p class="field-hint" id="pasteNote" role="status" aria-live="polite" hidden></p>
 
   <div class="form-actions">
     <button type="submit" class="btn btn-primary btn-lg" id="checkBtn"

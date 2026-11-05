@@ -201,6 +201,8 @@
       <ul class="nav-list">
         <li><a class="nav-link{% if active == 'index' %} is-active{% endif %}" href="{{ url_for('index') }}"{% if active == 'index' %} aria-current="page"{% endif %}>Home</a></li>
         <li><a class="nav-link{% if active in ('detect', 'predict', 'upload') %} is-active{% endif %}" href="{{ url_for('detect') }}"{% if active in ('detect', 'predict', 'upload') %} aria-current="page"{% endif %}>Detect News</a></li>
+        <li><a class="nav-link{% if active == 'compare' %} is-active{% endif %}" href="{{ url_for('compare') }}"{% if active == 'compare' %} aria-current="page"{% endif %}>Compare</a></li>
+        <li><a class="nav-link{% if active == 'analytics' %} is-active{% endif %}" href="{{ url_for('analytics') }}"{% if active == 'analytics' %} aria-current="page"{% endif %}>Analytics</a></li>
         <li><a class="nav-link" href="{{ url_for('index') }}#how-it-works">How It Works</a></li>
         <li><a class="nav-link{% if active == 'feed' %} is-active{% endif %}" href="{{ url_for('feed') }}"{% if active == 'feed' %} aria-current="page"{% endif %}>News Feed</a></li>
         <li><a class="nav-link{% if active in ('assistant', 'assistant_ask') %} is-active{% endif %}" href="{{ url_for('assistant') }}"{% if active in ('assistant', 'assistant_ask') %} aria-current="page"{% endif %}>AI Assistant</a></li>
@@ -250,6 +252,8 @@
       <ul class="footer-links">
         <li><a href="{{ url_for('index') }}">Home</a></li>
         <li><a href="{{ url_for('detect') }}">Detect News</a></li>
+        <li><a href="{{ url_for('compare') }}">News Comparison Lab</a></li>
+        <li><a href="{{ url_for('analytics') }}">Intelligence Analytics</a></li>
         <li><a href="{{ url_for('index') }}#how-it-works">How It Works</a></li>
         <li><a href="{{ url_for('feed') }}">News Feed</a></li>
         <li><a href="{{ url_for('assistant') }}">AI News Assistant</a></li>
@@ -371,6 +375,7 @@
 
 <script src="{{ url_for('static', filename='js/script.js') }}"></script>
 <script src="{{ url_for('static', filename='js/voice.js') }}"></script>
+<script src="{{ url_for('static', filename='js/scene3d.js') }}"></script>
 {% block scripts %}{% endblock %}
 </body>
 </html>

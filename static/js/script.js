@@ -39,6 +39,7 @@
     initNav();
     initReveals();
     initAnalysisForm();
+    initPasteButton();
     initUpgrade();
   });
 
@@ -273,6 +274,66 @@
       if (!checkBtn) return;
       checkBtn.classList.remove("is-loading");
       checkBtn.removeAttribute("aria-disabled");
+    });
+  }
+
+  /* ---------------------------------------------------------------------
+     Paste article button — reads the system clipboard into the article
+     field through the async Clipboard API (available on secure origins,
+     which includes http://localhost). Any failure is reported honestly in
+     the #pasteNote status line instead of failing silently.
+  --------------------------------------------------------------------- */
+  function initPasteButton() {
+    var pasteBtn = document.getElementById("pasteArticleBtn");
+    var article = document.getElementById("article");
+    var note = document.getElementById("pasteNote");
+    if (!pasteBtn || !article) return;
+
+    var noteTimer = null;
+    function showNote(message, isError) {
+      if (!note) return;
+      note.textContent = message;
+      note.hidden = false;
+      note.style.color = isError ? "var(--warn)" : "var(--accent)";
+      clearTimeout(noteTimer);
+      noteTimer = setTimeout(function () {
+        note.hidden = true;
+      }, 7000);
+    }
+
+    pasteBtn.addEventListener("click", function () {
+      if (!navigator.clipboard || !navigator.clipboard.readText) {
+        showNote(
+          "Reading the clipboard is not supported in this browser — click into the article box and press Ctrl+V (Cmd+V on Mac) instead.",
+          true
+        );
+        return;
+      }
+
+      pasteBtn.classList.add("is-busy");
+      navigator.clipboard
+        .readText()
+        .then(function (text) {
+          pasteBtn.classList.remove("is-busy");
+          if (!text || !text.trim()) {
+            showNote("The clipboard is empty — copy some text first.", true);
+            return;
+          }
+          article.value = text;
+          // Reuse the existing counter/validation wiring.
+          article.dispatchEvent(new Event("input", { bubbles: true }));
+          article.focus();
+          showNote(
+            "Pasted " + text.length.toLocaleString() + " characters from the clipboard."
+          );
+        })
+        .catch(function () {
+          pasteBtn.classList.remove("is-busy");
+          showNote(
+            "Clipboard access was denied by the browser — click into the article box and press Ctrl+V (Cmd+V on Mac) instead.",
+            true
+          );
+        });
     });
   }
 

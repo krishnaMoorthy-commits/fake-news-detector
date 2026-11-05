@@ -60,6 +60,30 @@ prediction.
   `a–z`, so Tamil or Hindi (Devanagari) input triggers a visible "Language
   limitation" warning on the result page rather than a silently meaningless
   score — the app never claims to translate text
+- **News Comparison Lab (`/compare`)**: two headline/article panels scored by
+  the *same* trained model in one submission, side-by-side verdict cards with
+  the real confidence scores, an animated label-agreement indicator, a
+  **genuine word-level similarity calculation** (Jaccard overlap + shared /
+  unique vocabulary computed from the actual input), a downloadable text
+  report built from the rendered results, and an explicit note that differing
+  predictions are *not* proof the articles are factually inconsistent
+- **Intelligence Analytics (`/analytics`)**: session-scoped dashboard with
+  animated counters (total / REAL / FAKE / REAL share), a prediction
+  distribution doughnut and a 7-day activity bar chart (Chart.js, vendored
+  locally), the recent-analysis history with timestamps, and the model-quality
+  metrics recorded inside the `.pkl` bundle at training time. Empty sessions
+  show honest empty states — no sample data is ever mixed in, and one
+  visitor's history never reaches another session
+- **Premium 3D experience (Three.js, loaded on demand)**: holographic neural
+  network in the home hero, holographic news scanner rings on `/detect`,
+  floating article panels on `/compare` and floating statistic bars on
+  `/analytics`; CSS 3D tilt cards, mouse parallax and a layered 3D microphone
+  with an equalizer-floor waveform. WebGL failure, missing libraries or
+  `prefers-reduced-motion` fall back to animated CSS visuals; decorative hero
+  scenes are hidden on phones to protect performance
+- **Paste-article button** on the analysis form: reads the system clipboard
+  into the article field via the async Clipboard API and reports blocked or
+  empty clipboard access honestly (with a Ctrl+V fallback message)
 - Server-side text preprocessing (lowercasing, HTML/URL/punctuation removal)
 - TF-IDF vectorization of submitted text
 - Logistic Regression classification (REAL / FAKE)
@@ -124,6 +148,8 @@ fake_news_detector/
 │   ├── index.html           <- premium home page (hero, workflow, feed preview…)
 │   ├── detect.html          <- analysis form + document upload panel (/detect)
 │   ├── result.html          <- prediction result (/predict, /upload)
+│   ├── compare.html         <- News Comparison Lab (/compare)
+│   ├── analytics.html       <- Intelligence Analytics dashboard (/analytics)
 │   ├── feed.html            <- news feed with filters and search (/feed)
 │   ├── assistant.html       <- AI News Assistant chat (/assistant)
 │   ├── about.html           <- about + model card
@@ -135,8 +161,14 @@ fake_news_detector/
     ├── css/
     │   └── style.css        <- design system (CSS variables, all sections, animations)
     ├── js/
-    │   ├── script.js        <- nav, reveals, count-ups, workflow, upload, chat, feed
-    │   └── voice.js         <- Web Speech API: voice dock, voice assistant, TTS player
+    │   ├── script.js        <- nav, reveals, count-ups, workflow, upload, paste, chat, feed
+    │   ├── voice.js         <- Web Speech API: voice dock, voice assistant, TTS player
+    │   ├── scene3d.js       <- Three.js scenes (lazy), CSS 3D tilt, mouse parallax
+    │   ├── compare.js       <- comparison validation, loading state, report download
+    │   ├── analytics.js     <- animated counters + Chart.js dashboard charts
+    │   └── vendor/
+    │       ├── three.min.js       <- vendored Three.js (no CDN at runtime)
+    │       └── chart.umd.min.js   <- vendored Chart.js (no CDN at runtime)
     └── img/
         └── favicon.svg
 ```
@@ -151,6 +183,9 @@ fake_news_detector/
 | `/detect` | GET | Analysis form + document upload panel (also used to re-render validation errors) |
 | `/predict` | POST | Runs the real model and renders the result page |
 | `/upload` | POST | Extracts text from an uploaded TXT/PDF/DOCX file (in memory) and runs the same prediction flow |
+| `/compare` | GET | News Comparison Lab — two-article input panels |
+| `/compare` | POST | Scores **both** articles with the same model and renders side-by-side verdicts + genuine word-level similarity |
+| `/analytics` | GET | Intelligence Analytics dashboard (counters, charts, history — session data only) |
 | `/feed` | GET | News feed — category filter (`?category=`) and search (`?q=`), demonstration content |
 | `/assistant` | GET | AI News Assistant chat interface |
 | `/assistant/ask` | POST | Assistant replies: JSON for the chat UI, HTML fallback without JavaScript |
@@ -243,7 +278,7 @@ server-side validation, XSS escaping, and proof that the real
 python _test_app.py
 ```
 
-Latest run: **289/289 checks passed**, covering 12 sections:
+Latest run: **376/376 checks passed**, covering 13 sections:
 
 1. Python syntax checks
 2. Imports & app factory
@@ -268,6 +303,14 @@ Latest run: **289/289 checks passed**, covering 12 sections:
     voice controls markup, the honest Tamil & Hindi language warnings (and
     their absence for English), the `voice.js` feature set (no `innerHTML`,
     no API keys, reduced-motion) and the matching CSS
+13. News Comparison Lab, Intelligence Analytics and the 3D experience:
+    `/compare` running the model exactly twice per submission with genuine
+    similarity maths (100% for identical text, 0% for disjoint text),
+    server-side rejection of an empty side, XSS escaping on both panels,
+    `/analytics` empty states for fresh visitors, **session privacy** (one
+    visitor's history never appears in another session), nav/footer links
+    and active states, the vendored Three.js/Chart.js bundles, `scene3d.js`
+    feature guards, the paste-article control and the new CSS layer
 
 Live HTTP checks against a running server: every page and static asset
 returns 200, `/predict` returns a real prediction with confidence, multipart
@@ -295,6 +338,15 @@ typed and spoken assistant replies, widget open / clear / Escape, and
 horizontal-overflow checks at 390 px for `/`, `/detect` and `/assistant`.
 Speech *recognition accuracy* itself cannot be asserted headlessly — that
 still needs a human speaking into a real microphone.
+
+Platform-upgrade browser suite (same protocol): **30/30 checks, 0 console
+errors, 0 failed requests** — the three.js scenes rendering on `/`,
+`/detect`, `/compare` and `/analytics` (with the CSS fallback verified as
+the alternative path), the full comparison flow (fill → analyze → verdicts,
+overlap score, agreement card, shared-vocabulary chips, clear-all), the
+analytics dashboard drawing real pixels into both charts from session data,
+the paste-button outcome message, microphone tilt, and 390 px overflow +
+phone scene-hiding checks for `/compare`, `/analytics` and `/detect`.
 
 ---
 
@@ -398,6 +450,20 @@ into the running application.
   preprocessing discards every character outside `a–z`, so Tamil and Hindi
   input is neither translated nor meaningfully classified — the result page
   warns about this rather than showing a confident-looking but empty result.
+- **3D visuals:** the WebGL scenes (neural network, scanner rings,
+  comparison panels, statistic bars) are decorative only. They are loaded
+  only on pages that declare a scene, pause off-screen and in background
+  tabs, are hidden on small hero areas, and are replaced by CSS animations
+  when WebGL is unavailable or `prefers-reduced-motion` is set — the site
+  remains fully usable with no 3D at all.
+- **Comparison Lab:** a similarity score measures word-set overlap after
+  preprocessing; it says nothing about whether the articles are true, and
+  two different model labels are never presented as evidence that the
+  articles contradict each other.
+- **Analytics dashboard:** charts and counters are computed live from the
+  current browser session only (Flask signed cookie). They reset when the
+  session ends or the server restarts, and are never shared between
+  visitors — this is by design, not a bug.
 
 ---
 
@@ -412,9 +478,12 @@ into the running application.
   replies and the no-JS chat fallback).
 - Missing dataset and missing/corrupted model files are handled with
   friendly, non-technical error messages instead of raw stack traces.
-- No third-party front-end assets: CSS, JavaScript, icons and the hero
-  illustration all ship from `static/`, so nothing depends on a CDN at
-  runtime (and nothing breaks if one is unreachable).
+- No third-party front-end assets at runtime: CSS, JavaScript, icons and the
+  hero illustration all ship from `static/`, and the only libraries
+  (Three.js, Chart.js) are **vendored into `static/js/vendor/`** — nothing
+  depends on a CDN at runtime (and nothing breaks if one is unreachable).
+  `scene3d.js` fetches three.js only when a page actually declares a 3D
+  scene, so other pages never pay for it.
 - Uploaded documents are validated by extension (`.txt`, `.pdf`, `.docx`)
   and size (2 MB max), read into memory a single time, parsed with dedicated
   libraries, never executed and never written to disk. Empty and unreadable

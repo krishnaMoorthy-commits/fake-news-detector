@@ -1,0 +1,213 @@
+{% extends "base.html" %}
+
+{% block title %}Intelligence Analytics — Fake News Detection{% endblock %}
+{% block meta_description %}Session analytics for your news analyses: totals, label distribution, recent activity and recorded model quality metrics.{% endblock %}
+
+{% block content %}
+
+{# Data consumed by analytics.js — genuine session numbers only, never sample data #}
+<script id="analyticsData" type="application/json">{{ {'stats': stats, 'distribution': distribution, 'weekly': weekly, 'hasHistory': has_history}|tojson }}</script>
+
+<section class="page-hero">
+  <div class="container">
+    <ol class="breadcrumb">
+      <li><a href="{{ url_for('index') }}">Home</a></li>
+      <li aria-hidden="true"><svg class="icon"><use href="#i-arrow-right"></use></svg></li>
+      <li aria-current="page">Intelligence Analytics</li>
+    </ol>
+    <p class="eyebrow">Intelligence Analytics</p>
+    <h1>Your analysis dashboard</h1>
+    <p class="muted">
+      Every number below is calculated from <strong>your own session</strong> &mdash;
+      real predictions you ran in this browser. Nothing here is shared with other
+      visitors, and no sample data is mixed in.
+    </p>
+
+    {# 3D scene: floating statistic bars (WebGL), CSS fallback below #}
+    <div class="scene scene-bars" data-scene="bars" aria-hidden="true">
+      <div class="scene-fallback">
+        <span class="sf-bar" style="--h:34%"></span>
+        <span class="sf-bar" style="--h:72%"></span>
+        <span class="sf-bar" style="--h:52%"></span>
+        <span class="sf-bar" style="--h:88%"></span>
+        <span class="sf-bar" style="--h:44%"></span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="container">
+
+    {# ------------------------------------------------------------------ #}
+    {# STAT CARDS (animated counters)                                      #}
+    {# ------------------------------------------------------------------ #}
+    <div class="dash-grid" aria-label="Session totals">
+      <article class="dash-card" data-tilt>
+        <span class="dash-icon" aria-hidden="true"><svg class="icon"><use href="#i-scan"></use></svg></span>
+        <div class="dash-value" data-count="{{ stats.total }}">0</div>
+        <div class="dash-label">Articles analyzed</div>
+        <p class="dash-sub">This browser session</p>
+      </article>
+
+      <article class="dash-card is-real" data-tilt>
+        <span class="dash-icon" aria-hidden="true"><svg class="icon"><use href="#i-check-circle"></use></svg></span>
+        <div class="dash-value" data-count="{{ stats.real }}">0</div>
+        <div class="dash-label">Labelled REAL</div>
+        <p class="dash-sub">Model output, not verified fact</p>
+      </article>
+
+      <article class="dash-card is-fake" data-tilt>
+        <span class="dash-icon" aria-hidden="true"><svg class="icon"><use href="#i-alert"></use></svg></span>
+        <div class="dash-value" data-count="{{ stats.fake }}">0</div>
+        <div class="dash-label">Labelled FAKE</div>
+        <p class="dash-sub">Model output, not verified fact</p>
+      </article>
+
+      <article class="dash-card is-share" data-tilt>
+        <span class="dash-icon" aria-hidden="true"><svg class="icon"><use href="#i-pulse"></use></svg></span>
+        <div class="dash-value"><span data-count="{{ (stats.real * 100 // stats.total) if stats.total else 0 }}">0</span>%</div>
+        <div class="dash-label">REAL share</div>
+        <p class="dash-sub">{{ stats.real }} of {{ stats.total }} analyses</p>
+      </article>
+    </div>
+
+    {# ------------------------------------------------------------------ #}
+    {# CHARTS                                                              #}
+    #}
+    <div class="dash-charts">
+      <article class="panel dash-chart-card reveal" aria-labelledby="distTitle">
+        <h2 class="panel-title" id="distTitle">Prediction distribution</h2>
+        {% if has_history %}
+        <p class="panel-sub">Share of REAL vs FAKE labels across your session analyses.</p>
+        <div class="chart-wrap chart-wrap-donut">
+          <canvas id="distChart" role="img"
+                  aria-label="Prediction distribution: {{ stats.real }} REAL and {{ stats.fake }} FAKE labels"></canvas>
+        </div>
+        <ul class="chart-legend" aria-hidden="true">
+          <li><span class="legend-dot dot-real"></span> REAL ({{ stats.real }})</li>
+          <li><span class="legend-dot dot-fake"></span> FAKE ({{ stats.fake }})</li>
+        </ul>
+        {% else %}
+        <div class="dash-empty">
+          <svg class="icon" aria-hidden="true"><use href="#i-chart"></use></svg>
+          <p><strong>No analyses yet.</strong> Run your first prediction on the
+             <a href="{{ url_for('detect') }}">Detect News</a> page and the distribution
+             will appear here automatically.</p>
+        </div>
+        {% endif %}
+      </article>
+
+      <article class="panel dash-chart-card reveal" data-delay="1" aria-labelledby="weekTitle">
+        <h2 class="panel-title" id="weekTitle">Weekly activity</h2>
+        {% if weekly %}
+        <p class="panel-sub">Analyses per day over the last 7 days (this session's timestamps).</p>
+        <div class="chart-wrap chart-wrap-bar">
+          <canvas id="weekChart" role="img" aria-label="Bar chart of analyses per day for the last seven days"></canvas>
+        </div>
+        {% else %}
+        <div class="dash-empty">
+          <svg class="icon" aria-hidden="true"><use href="#i-clock"></use></svg>
+          <p><strong>No timestamps to plot yet.</strong> The weekly chart appears once
+             this session has at least one recorded analysis.</p>
+        </div>
+        {% endif %}
+      </article>
+    </div>
+
+    {# ------------------------------------------------------------------ #}
+    {# RECENT ACTIVITY                                                     #}
+    #}
+    <article class="panel dash-history reveal" aria-labelledby="recentTitle">
+      <div class="dash-history-head">
+        <h2 class="panel-title" id="recentTitle">Recent analysis activity</h2>
+        <span class="badge">session only</span>
+      </div>
+
+      {% if recent %}
+      <ol class="history-list">
+        {% for item in recent %}
+        <li class="history-item">
+          <span class="badge {{ 'badge-real' if item.label == 'REAL' else 'badge-fake' }}">
+            <svg class="icon" aria-hidden="true"><use href="{{ '#i-check-circle' if item.label == 'REAL' else '#i-alert' }}"></use></svg>
+            {{ item.label }}
+          </span>
+          <span class="history-snippet">{{ item.snippet or '(no preview stored)' }}</span>
+          <span class="history-meta">
+            {% if item.confidence is not none %}{{ item.confidence }}% &middot; {% endif %}
+            {{ item.ts|timestamp_label }}
+          </span>
+        </li>
+        {% endfor %}
+      </ol>
+      <p class="field-hint">
+        Showing the latest {{ recent|length }} of up to {{ history_limit }} stored
+        analyses. History lives in this browser's session cookie &mdash; clearing it,
+        or starting a new session, resets everything.
+      </p>
+      {% else %}
+      <div class="dash-empty">
+        <svg class="icon" aria-hidden="true"><use href="#i-list"></use></svg>
+        <p><strong>No activity recorded yet.</strong> Each analysis you run is listed
+           here with its label, confidence and time &mdash; nothing is fabricated in
+           the meantime.</p>
+      </div>
+      {% endif %}
+    </article>
+
+    {# ------------------------------------------------------------------ #}
+    {# MODEL QUALITY (recorded at training time — genuine)                 #}
+    #}
+    <article class="panel dash-model reveal" aria-labelledby="modelTitle">
+      <div class="dash-history-head">
+        <h2 class="panel-title" id="modelTitle">Model quality (recorded at training time)</h2>
+        <span class="badge">from model bundle</span>
+      </div>
+
+      {% if metrics %}
+      <p class="panel-sub">
+        These figures were computed by <code>train_model.py</code> on the held-out test
+        split when the model was trained &mdash; they are not live results.
+      </p>
+      <div class="metric-row">
+        {% if metrics.accuracy is defined %}
+        <div class="metric-chip"><strong>{{ metrics.accuracy }}%</strong><span>Test accuracy</span></div>
+        {% endif %}
+        {% if metrics.precision is defined %}
+        <div class="metric-chip"><strong>{{ metrics.precision }}%</strong><span>Precision (FAKE)</span></div>
+        {% endif %}
+        {% if metrics.recall is defined %}
+        <div class="metric-chip"><strong>{{ metrics.recall }}%</strong><span>Recall (FAKE)</span></div>
+        {% endif %}
+        {% if metrics.f1_score is defined %}
+        <div class="metric-chip"><strong>{{ metrics.f1_score }}%</strong><span>F1 score (FAKE)</span></div>
+        {% endif %}
+      </div>
+      {% else %}
+      <div class="dash-empty">
+        <svg class="icon" aria-hidden="true"><use href="#i-database"></use></svg>
+        <p><strong>No metrics are stored in this model bundle.</strong> Re-run
+           <code>python train_model.py</code> to record evaluation metrics during
+           training &mdash; none are shown here because none exist.</p>
+      </div>
+      {% endif %}
+    </article>
+
+    <div class="alert alert-warning reveal" role="note" style="margin-top:1.5rem;">
+      <svg class="icon" aria-hidden="true"><use href="#i-alert"></use></svg>
+      <div>
+        <strong>About these statistics:</strong> counters, history and charts reflect
+        model predictions made in <em>this browser session only</em>. They measure
+        activity, not accuracy of any news claim &mdash; a prediction is a statistical
+        label, never a fact-check.
+      </div>
+    </div>
+
+  </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/vendor/chart.umd.min.js') }}"></script>
+<script src="{{ url_for('static', filename='js/analytics.js') }}"></script>
+{% endblock %}
